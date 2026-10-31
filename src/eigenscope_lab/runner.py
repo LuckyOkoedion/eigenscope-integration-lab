@@ -12,6 +12,7 @@ SCENARIOS = {
     "tools": ("tools", "run_tools", "tools"),
     "telecom": ("telecom", "run_telecom", "telecom"),
     "robotics": ("robotics", "run_robotics", "robotics"),
+    "oil-gas": ("oil_gas", "run_oil_gas", "oil-gas"),
 }
 
 

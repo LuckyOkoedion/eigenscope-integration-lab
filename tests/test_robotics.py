@@ -136,6 +136,16 @@ def test_real_mujoco_motion_sensor_stop_and_contact_control():
     assert any(frame["x"] > 0.5 for frame in delivered)
     assert any(frame["safety_stop"] for frame in delivered if frame["phase"] == "obstacle-stop")
     assert any(frame["contacts"] > 0 for frame in delivered if frame["phase"] == "physics-control")
+    for frame in delivered:
+        assert frame["stop_clearance_m"] == NavigationLimits().stop_clearance_m
+        assert frame["goal_tolerance_m"] == NavigationLimits().goal_tolerance_m
+        assert frame["max_speed_mps"] == NavigationLimits().max_speed_mps
+        assert frame["sensor_timeout_s"] == 0.15
+        assert frame["sensor_age_s"] == pytest.approx(frame["t"] - frame["sensor_t"], abs=0.001)
+        assert frame["goal_remaining_m"] == pytest.approx(
+            math.hypot(frame["goal_x"] - frame["x"], frame["goal_y"] - frame["y"]), abs=2e-6
+        )
+        assert frame["monitor_enabled"] is (frame["phase"] != "physics-control")
 
 
 def test_real_engine_proposed_unsafe_core_has_failed_boundary_check():

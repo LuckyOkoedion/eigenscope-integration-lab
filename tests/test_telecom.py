@@ -152,6 +152,21 @@ def test_actual_event_frames_are_ordered_and_match_returned_observations():
         assert all(frame["allocated_prbs"] == 106 for frame in frames)
     assert any(frame["queue_packets"] > 0 for frame in observed)
     assert any(frame["dropped_packets"] > 0 for frame in observed)
+    for frame in observed:
+        assert frame["queue_limit_packets"] == 32
+        assert all(depth <= frame["queue_limit_packets"] for depth in frame["per_ue_queue_packets"])
+        assert frame["offered_mbps"] == (32 if frame["phase"] == "normal" else 160)
+        assert frame["arrival_window_open"] is (frame["t_seconds"] < 1.0)
+        assert sum(frame["per_ue_delivered"]) == frame["served_packets"]
+        assert frame["latency_sample_count"] == frame["served_packets"]
+        if frame["served_packets"]:
+            assert frame["observed_latency_p95_ms"] >= 0.5 - 1e-6
+            delivered = frame["per_ue_delivered"]
+            expected = sum(delivered) ** 2 / (len(delivered) * sum(n * n for n in delivered))
+            assert frame["jain_fairness"] == pytest.approx(expected, abs=1e-6)
+        else:
+            assert frame["observed_latency_p95_ms"] is None
+            assert frame["jain_fairness"] is None
 
 
 def test_callback_cancellation_halts_the_actual_simulation():

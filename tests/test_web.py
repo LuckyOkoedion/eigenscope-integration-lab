@@ -52,6 +52,7 @@ def test_session_actual_frame_delivery_completion_and_reset():
     assert state["frame"]["x"] == 3
     assert "telemetry" not in state["result"]
     assert len([event for event in session.events if event["kind"] == "frame"]) == 4
+    assert all(event["id"] == event["data"]["event_id"] for event in session.events)
     session.reset()
     assert session.snapshot()["status"] == "idle"
     assert session.snapshot()["frame"] is None
@@ -195,7 +196,8 @@ def test_sse_delivers_actual_frames_and_completed_state():
                 if value:
                     snapshot.append(value)
             assert snapshot[0] == "id: 0"
-            assert snapshot[1] == "event: snapshot"
+            assert snapshot[1] == "event: reset"
+            assert json.loads(snapshot[2][6:])["event_id"] == 0
             assert (
                 client.post(
                     base + "/api/run", json={"scenario": "robotics", "pace_ms": 0}
@@ -206,12 +208,16 @@ def test_sse_delivers_actual_frames_and_completed_state():
             done = False
             deadline = time.monotonic() + 3
             kind = None
+            event_id = None
             while not done and time.monotonic() < deadline:
                 value = next(lines)
+                if value.startswith("id: "):
+                    event_id = int(value[4:])
                 if value.startswith("event: "):
                     kind = value[7:]
                 if value.startswith("data: "):
                     data = json.loads(value[6:])
+                    assert data["event_id"] == event_id
                     frames += kind == "frame"
                     done = kind == "state" and data["status"] == "completed"
             assert done and frames == 4

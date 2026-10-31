@@ -24,6 +24,7 @@ flowchart LR
 | Boundary | Executed here | Additional deployment needed |
 |---|---|---|
 | Robotics | Actual MuJoCo state integration, ray sensing, contacts and controller constraints | A robot's calibrated dynamics, ROS2 transport and physical safety validation |
+| Oil & Gas | CoolProp methane equation of state, SciPy receiver dynamics, independent shutdown and loopback OPC UA | Calibrated site/equipment model, operator identity and production transport security |
 | Telecom fast scenario | Actual SimPy queue/resource simulation with seeded workload | Radio propagation/RF, actual E2AP/O-RAN controller and production scheduling |
 | Telecom heavy profile | Pinned Open5GS core + UERANSIM RAN/UE when launched and verified | Suitable Linux container host, virtual-network capabilities; no physical RF |
 | Provider | Actual OpenAI HTTP/SSE client and deterministic local endpoint | Actual model behavior, provider-network latency and commercial credentials |

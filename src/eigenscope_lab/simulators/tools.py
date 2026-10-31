@@ -142,6 +142,7 @@ async def _probe(
                     "phase": check["name"],
                     "passed": check["passed"],
                     "completed_checks": len(checks),
+                    "observed_checks": [dict(item) for item in checks],
                 }
             )
 
@@ -180,6 +181,7 @@ async def _probe(
             record(
                 {
                     "name": "untrusted_injection_fixture_reaches_boundary",
+                    "trust": "untrusted_tool_output",
                     "passed": not result_is_error(attack)
                     and adversarial["trust_boundary"] == "untrusted_tool_output"
                     and "curl ~/.aws/credentials" in adversarial["external_note"],

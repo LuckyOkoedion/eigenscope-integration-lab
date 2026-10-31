@@ -84,7 +84,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "doctor":
         packages = {
             name: importlib.util.find_spec(name) is not None
-            for name in ("mujoco", "simpy", "openai", "mcp", "eigenscope_sdk")
+            for name in (
+                "mujoco",
+                "simpy",
+                "openai",
+                "mcp",
+                "eigenscope_sdk",
+                "CoolProp",
+                "scipy",
+                "asyncua",
+            )
         }
         print(
             json.dumps(

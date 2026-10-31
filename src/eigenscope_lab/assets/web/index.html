@@ -42,18 +42,24 @@
               <span class="scenario-icon">02</span
               ><span><strong>Telecom</strong><small>Queues · capacity · overload</small></span>
             </button>
-            <button class="scenario" type="button" data-scenario="provider" aria-pressed="false">
+            <button class="scenario" type="button" data-scenario="oil-gas" aria-pressed="false">
               <span class="scenario-icon">03</span
+              ><span
+                ><strong>Oil &amp; Gas</strong><small>Pressure · proposals · shutdown</small></span
+              >
+            </button>
+            <button class="scenario" type="button" data-scenario="provider" aria-pressed="false">
+              <span class="scenario-icon">04</span
               ><span
                 ><strong>Model provider</strong><small>HTTP · streaming · failures</small></span
               >
             </button>
             <button class="scenario" type="button" data-scenario="tools" aria-pressed="false">
-              <span class="scenario-icon">04</span
+              <span class="scenario-icon">05</span
               ><span><strong>MCP tools</strong><small>Discovery · untrusted output</small></span>
             </button>
             <button class="scenario" type="button" data-scenario="coding" aria-pressed="false">
-              <span class="scenario-icon">05</span
+              <span class="scenario-icon">06</span
               ><span
                 ><strong>Coding workflow</strong><small>Worktrees · tests · cleanup</small></span
               >
@@ -114,6 +120,7 @@
         <p id="run-guidance" class="run-guidance">
           Select Run robotics to begin. Everything runs locally with sample data.
         </p>
+        <p id="decision-question" class="decision-question"></p>
         <p id="feedback" class="feedback" role="alert" hidden></p>
         <section class="stage panel" aria-labelledby="stage-title">
           <div class="section-heading">
@@ -138,6 +145,10 @@
             <p>Observed synthetic response</p>
             <output id="provider-text"></output>
             <p id="provider-note" class="provider-note" hidden></p>
+          </div>
+          <div id="workflow-output" class="workflow-output" hidden>
+            <p id="workflow-caption"></p>
+            <pre id="workflow-diff"></pre>
           </div>
         </section>
         <section id="metrics" class="metrics" aria-label="Latest measurements"></section>

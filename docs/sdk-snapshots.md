@@ -6,7 +6,7 @@ The Python lab uses the official, unmodified EigenScope SDK **0.2.2** from the [
 4da938e7c6db1acffd3d3098e2e9c0ae692d0741cd7f1ee413f171e856f662b8
 ```
 
-`pyproject.toml` and `uv.lock` identify the archive and enforce its integrity. The TypeScript example pins its SDK archive in `typescript/package-lock.json`. These pins make a test run's client version reproducible. The configured service is selected separately through `ORTHOCORE_BASE_URL`.
+`pyproject.toml` and `uv.lock` identify the archive and enforce its integrity. The TypeScript example uses the [unmodified SDK0.2.2 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.2-80b9beda), with its npm integrity pinned in `typescript/package-lock.json`. These pins make a test run's client version reproducible. The configured service is selected separately through `ORTHOCORE_BASE_URL`.
 
 ## Update a dependency
 

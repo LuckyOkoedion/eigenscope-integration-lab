@@ -22,7 +22,7 @@ Live tests send the fixed synthetic cases in `src/eigenscope_lab/fixtures.py` to
 3. Send the protected core through the OpenAI HTTP client to the local echo provider, which preserves the response text and symbol slots exactly.
 4. Rehydrate through the official SDK/API; check restored identifiers, mapping consumption and replay rejection.
 5. Scrub any remaining mapping created by the invocation, including after a provider failure.
-6. For robotics and telecom, exercise the scenario adapter with the returned core.
+6. For robotics, telecom and Oil & Gas, exercise the scenario adapter with the returned core.
 
 The SDK uses its public transport hook for bounded HTTP requests, with redirects and environment proxies disabled. Authentication, policy, canonicalization and response validation remain in the official SDK. The runner tracks only its own returned mapping handles in memory, including handles from responses rejected by SDK validation.
 
@@ -40,7 +40,7 @@ uv run --frozen eigenscope-lab live --case workbench --output results/workbench.
 uv run --frozen eigenscope-lab live --repeat 3 --timeout 15 --output results/repeated.json
 ```
 
-Other case IDs are `coding`, `tool-injection`, `telecom`, `email` and `unicode`. Requests run sequentially. Repeat applies to SDK cases, is capped at ten and leaves the workbench controls as a single pass.
+Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `email` and `unicode`. Requests run sequentially. Repeat applies to SDK cases, is capped at ten and leaves the workbench controls as a single pass.
 
 Timings identify SDK, local-provider and complete-workflow boundaries. SDK wall time includes serialization, network requests, service execution and response validation. Reports record the sample count; compare runs using the same client, configuration and environment.
 
@@ -54,7 +54,7 @@ npm run typecheck
 npm run live
 ```
 
-The server-side example reads `ORTHOCORE_API_KEY` and passes it as `bearerToken`. It runs coding, telecom and robotics cases with a deterministic provider echo. The Python runner separately exercises the local provider over HTTP. See the [TypeScript guide](../typescript/README.md).
+The server-side example reads `ORTHOCORE_API_KEY` and passes it as `bearerToken`. It runs coding, telecom, robotics and Oil & Gas cases with a deterministic provider echo. The Python runner separately exercises the local provider over HTTP. See the [TypeScript guide](../typescript/README.md).
 
 ## Read and share results
 

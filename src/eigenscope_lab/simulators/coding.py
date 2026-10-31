@@ -73,6 +73,7 @@ def run_coding(
                     "phase": check["name"],
                     "passed": check["passed"],
                     "completed_checks": len(checks),
+                    "observed_checks": [dict(item) for item in checks],
                 }
             )
 
@@ -137,7 +138,9 @@ def run_coding(
             except ValueError:
                 stale_rejected = True
             record({"name": "stale_patch_rejected", "passed": stale_rejected})
+            before_patch = (worktree / "budget.py").read_text()
             apply_approved_patch(worktree, "budget.py", "return attempts + 1", "return attempts")
+            after_patch = (worktree / "budget.py").read_text()
             fixed = command(
                 [sys.executable, "-I", "-m", "unittest", "discover", "-s", ".", "-p", "test_*.py"],
                 worktree,
@@ -146,6 +149,8 @@ def run_coding(
                 {
                     "name": "patched_worktree_passes_contract",
                     "passed": fixed.returncode == 0 and "OK" in fixed.stderr,
+                    "test_exit_code": fixed.returncode,
+                    "patch": {"file": "budget.py", "before": before_patch, "after": after_patch},
                 }
             )
             diff = git_command(["diff", "--name-only"], worktree)
@@ -184,6 +189,12 @@ def run_coding(
         "engine_version": version,
         "seed": seed,
         "checks": checks,
-        "metrics": {"wall_ms": round((time.perf_counter() - start) * 1000, 3)},
+        "metrics": {
+            "wall_ms": round((time.perf_counter() - start) * 1000, 3),
+            "baseline_test_exit_code": baseline.returncode,
+            "patched_test_exit_code": fixed.returncode,
+            "changed_files": diff.stdout.strip().splitlines(),
+            "patch": {"file": "budget.py", "before": before_patch, "after": after_patch},
+        },
         "scope": "Actual Git branches/worktree, syntax validation and subprocess tests on source-owned synthetic code. A deterministic approved patch stands in for model reasoning; no IDE or vendor proxy is claimed.",
     }

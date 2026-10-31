@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
-SCENARIOS = ("robotics", "telecom", "provider", "tools", "coding")
+SCENARIOS = ("robotics", "telecom", "oil-gas", "provider", "tools", "coding")
 ASSET_ROOT = Path(__file__).parent / "assets" / "web"
 LOGGER = logging.getLogger(__name__)
 
@@ -27,8 +27,9 @@ class RunCancelled(Exception):
 
 def _runner_for(scenario: str) -> Callable[..., dict[str, Any]]:
     # Import only the selected extra, so a coding-only installation stays useful.
-    module = importlib.import_module(f"eigenscope_lab.simulators.{scenario}")
-    return getattr(module, f"run_{scenario}")
+    module_name = scenario.replace("-", "_")
+    module = importlib.import_module(f"eigenscope_lab.simulators.{module_name}")
+    return getattr(module, f"run_{module_name}")
 
 
 class LabSession:
@@ -59,7 +60,9 @@ class LabSession:
 
     def _event(self, kind: str, data: dict[str, Any]) -> None:
         self.sequence += 1
-        self.events.append({"id": self.sequence, "kind": kind, "data": data})
+        self.events.append(
+            {"id": self.sequence, "kind": kind, "data": {**data, "event_id": self.sequence}}
+        )
         self.condition.notify_all()
 
     def start(self, scenario: str, seed: int, pace_ms: int) -> None:
@@ -284,11 +287,15 @@ class LabHandler(BaseHTTPRequestHandler):
             self.close_connection = True
             # A fresh server resets sequence numbers; an old browser cursor must
             # not suppress future updates after a reconnect.
-            cursor = min(cursor, session.sequence)
+            with session.condition:
+                reset = cursor > session.sequence
+                cursor = min(cursor, session.sequence)
+                snapshot = session.snapshot()
+                snapshot_kind = "reset" if reset else "snapshot"
             self.wfile.write(
                 (
-                    f"id: {session.sequence}\nevent: snapshot\ndata: "
-                    + json.dumps(session.snapshot(), allow_nan=False)
+                    f"id: {snapshot['event_id']}\nevent: {snapshot_kind}\ndata: "
+                    + json.dumps(snapshot, allow_nan=False)
                     + "\n\n"
                 ).encode()
             )

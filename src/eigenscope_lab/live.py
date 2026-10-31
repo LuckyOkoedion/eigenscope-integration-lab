@@ -248,15 +248,19 @@ def _sdk_case(
         else:
             checks.append(_check("consumed_ticket_reuse_denied", False))
             consumed = False
-        if case.domain in {"robotics", "telecom"}:
+        if case.domain in {"robotics", "telecom", "oil-gas"}:
             if case.domain == "robotics":
                 from .simulators.robotics import run_robotics
 
                 external = run_robotics(seed=seed, task_core=core)
-            else:
+            elif case.domain == "telecom":
                 from .simulators.telecom import run_telecom
 
                 external = run_telecom(seed=seed, task_core=core)
+            else:
+                from .simulators.oil_gas import run_oil_gas
+
+                external = run_oil_gas(seed=seed, task_core=core)
             row["external_system"] = external
             checks.append(
                 _check(
@@ -459,7 +463,7 @@ def run_live(
         )
     if case_id not in {"all", "workbench", *(case.id for case in CASES)}:
         raise ValueError(
-            "Unknown case; choose all, workbench, coding, tool-injection, telecom, robotics, email or unicode"
+            "Unknown case; choose all, workbench, coding, tool-injection, telecom, robotics, oil-gas, email or unicode"
         )
     try:
         import httpx

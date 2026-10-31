@@ -27,7 +27,7 @@ uv run --frozen eigenscope-lab doctor
 uv run --frozen eigenscope-lab serve
 ```
 
-Open **http://127.0.0.1:8765**. Select a scenario, choose **Run**, and inspect its measurements and checks. Robotics shows movement, sensing and safety stops; Telecom shows queues and throughput; the provider, MCP and coding views follow their actual protocol or process checkpoints. Switch between light and dark themes, stop a run, or download its completed JSON result. See the [dashboard guide](docs/visualization.md).
+Open **http://127.0.0.1:8765**. Select a scenario, choose **Run**, and inspect its measurements and checks. Robotics shows movement, sensing and safety stops; Telecom shows queues and throughput; Oil & Gas shows receiver pressure, reviewed proposals and shutdown; the provider, MCP and coding views follow their actual protocol or process checkpoints. Switch between light and dark themes, stop a run, or download its completed JSON result. See the [dashboard guide](docs/visualization.md).
 
 **Local scenarios and the dashboard need no EigenScope account, API key or hosted credits.** Installation downloads the pinned packages; these scenarios then run locally. The dashboard does not initiate authenticated API tests.
 
@@ -52,6 +52,7 @@ Run these commands from the repository directory. Each guide explains the setup,
 | [MCP tools](docs/scenarios/tools.md) | Official MCP SDK, subprocess transport and adversarial tool content | `uv run --frozen eigenscope-lab run tools` |
 | [Telecom](docs/scenarios/telecom.md) | SimPy UE traffic, radio-resource budgets, finite queues and latency | `uv run --frozen eigenscope-lab run telecom` |
 | [Robotics](docs/scenarios/robotics.md) | MuJoCo physics, navigation, sensing and an independent safety envelope | `uv run --frozen eigenscope-lab run robotics` |
+| [Oil & Gas](docs/scenarios/oil-gas.md) | CoolProp methane properties, SciPy receiver dynamics and real OPC UA authorization checks | `uv run --frozen eigenscope-lab run oil-gas` |
 
 Pair the lab examples with EigenScope's product blueprints: [coding agents](https://eigenscope.guardianai.network/guide/agent-firewall?usecase=coding), [tool-result protection](https://eigenscope.guardianai.network/guide/agent-firewall?usecase=ipi), [telecom](https://eigenscope.guardianai.network/guide/agent-firewall?usecase=6g) and [robotics](https://eigenscope.guardianai.network/guide/agent-firewall?usecase=robotics).
 
@@ -116,7 +117,7 @@ Open **http://127.0.0.1:8765**. Stop it with `docker compose down` using the sam
 
 ## Contribute
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) to add an industry adapter, improve a scenario or contribute an adversarial regression case. The development checks are:
+AI coding agents should start with [AGENTS.md](AGENTS.md). Read [CONTRIBUTING.md](CONTRIBUTING.md) to add an industry adapter, improve a scenario or contribute an adversarial regression case. The development checks are:
 
 ```sh
 uv sync --locked --all-extras

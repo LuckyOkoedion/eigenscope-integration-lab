@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
 
+SENSOR_TIMEOUT_S = 0.15
+
 
 class GoalRejected(ValueError):
     """A proposed goal is outside this lab's declared controller contract."""
@@ -235,7 +237,7 @@ def _rollout(
         if monitor_enabled and clearance <= limits.stop_clearance_m:
             stop_latched = True
             stop_reason = "OBSTACLE"
-        if monitor_enabled and data.time - last_sensor_time > 0.15:
+        if monitor_enabled and data.time - last_sensor_time > SENSOR_TIMEOUT_S:
             stop_latched = True
             stop_reason = "SENSOR_TIMEOUT"
         speed = min(limits.max_speed_mps, distance * 1.8)
@@ -262,6 +264,15 @@ def _rollout(
                 "yaw": round(float(data.qpos[2]), 6),
                 "range_m": round(clearance, 6),
                 "sensor_t": round(last_sensor_time, 3),
+                "sensor_age_s": round(float(data.time) - last_sensor_time, 6),
+                "sensor_timeout_s": SENSOR_TIMEOUT_S,
+                "stop_clearance_m": limits.stop_clearance_m,
+                "goal_tolerance_m": limits.goal_tolerance_m,
+                "max_speed_mps": limits.max_speed_mps,
+                "goal_remaining_m": round(
+                    math.hypot(goal.x - float(data.qpos[0]), goal.y - float(data.qpos[1])), 6
+                ),
+                "monitor_enabled": monitor_enabled,
                 "speed_mps": round(float(np.linalg.norm(data.qvel[:2])), 6),
                 "safety_stop": stop_latched,
                 "stop_reason": stop_reason,

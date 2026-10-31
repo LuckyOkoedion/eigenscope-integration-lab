@@ -244,6 +244,17 @@ def simulate_ran(
                 "t_ms": round(float(env.now) * 1000, 3),
                 "queue_packets": sum(map(len, queues)),
                 "per_ue_queue_packets": list(map(len, queues)),
+                "queue_limit_packets": control.queue_limit_packets,
+                "offered_mbps": control.offered_mbps_per_ue * control.ue_count,
+                "arrival_window_open": float(env.now) < control.duration_seconds,
+                "per_ue_delivered": list(served),
+                "observed_latency_p95_ms": round(_percentile(delays, 0.95), 6) if delays else None,
+                "latency_sample_count": len(delays),
+                "jain_fairness": round(
+                    delivered**2 / (control.ue_count * sum(n * n for n in served)), 6
+                )
+                if delivered
+                else None,
                 "served_packets": delivered,
                 "dropped_packets": sum(dropped_queue) + sum(dropped_retry),
                 "throughput_mbps": round(

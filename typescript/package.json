@@ -1,6 +1,6 @@
 {
   "name": "@eigenscope/integration-lab",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "TypeScript reference integration and SDK protocol-boundary tests",
@@ -16,7 +16,7 @@
     "format:check": "prettier --check . ../src/eigenscope_lab/assets/web"
   },
   "dependencies": {
-    "@eigenscope/sdk": "https://eigenscope.guardianai.network/npm/eigenscope-sdk-0.2.2.tgz"
+    "@eigenscope/sdk": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-typescript-0.2.2-80b9beda/eigenscope-sdk-0.2.2.tgz"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

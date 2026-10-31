@@ -14,6 +14,13 @@ const definitions = {
     description: "Inspect subscriber queues, finite radio capacity, and the effect of overload.",
     scope: "Actual SimPy queue and throughput observations",
   },
+  "oil-gas": {
+    title: "Oil & Gas",
+    engine: "CoolProp · SciPy · OPC UA",
+    description:
+      "Follow receiver pressure, reviewed load changes and independent shutdown protection.",
+    scope: "Methane receiver model · Local OPC UA exchange",
+  },
   provider: {
     title: "Model provider",
     engine: "OpenAI client · Loopback HTTP / SSE",
@@ -39,6 +46,8 @@ const definitions = {
 let selected = "robotics";
 let state = { status: "idle", frames_received: 0, run_id: 0 };
 let lastRun = 0;
+let lastRevision = -1;
+let serverGeneration = 0;
 let frame = null;
 let trace = [];
 let activity = [];
@@ -90,53 +99,220 @@ function metrics(items) {
     }),
   );
 }
+function observedChecks() {
+  return frame?.observed_checks || state.result?.checks || [];
+}
+function observedCheck(name) {
+  return observedChecks().find((check) => check.name === name);
+}
+function observedOutcome(name, success = "Passed") {
+  const check = observedCheck(name);
+  return !check ? "Awaiting observation" : check.passed ? success : "Needs attention";
+}
+function updateWorkflowEvidence() {
+  const panel = $("workflow-output");
+  const patch =
+    observedCheck("patched_worktree_passes_contract")?.patch || state.result?.metrics?.patch;
+  panel.hidden = selected !== "coding" || !patch;
+  if (!panel.hidden) {
+    const before = String(patch.before).split("\n"),
+      after = String(patch.after).split("\n");
+    let first = 0,
+      lastBefore = before.length,
+      lastAfter = after.length;
+    while (first < lastBefore && first < lastAfter && before[first] === after[first]) first++;
+    while (
+      lastBefore > first &&
+      lastAfter > first &&
+      before[lastBefore - 1] === after[lastAfter - 1]
+    ) {
+      lastBefore--;
+      lastAfter--;
+    }
+    $("workflow-caption").textContent = `Observed change · ${patch.file}`;
+    $("workflow-diff").textContent = [
+      ...before.slice(first, lastBefore).map((line) => "− " + line),
+      ...after.slice(first, lastAfter).map((line) => "+ " + line),
+    ].join("\n");
+  }
+}
 function updateMetrics() {
+  const questions = {
+    robotics: "Can the robot reach its goal while respecting its stop limits?",
+    telecom: "Can the allocated radio capacity serve this traffic without excessive queues?",
+    "oil-gas": "Do proposals stay within operating limits, even when sensor data misleads?",
+    provider: "When does useful content arrive, and does the stream finish or stop correctly?",
+    tools:
+      "Which tool actions were permitted, which were denied, and where did untrusted data enter?",
+    coding: "Did the intended fix pass its tests while preserving the original checkout?",
+  };
+  $("decision-question").textContent = questions[selected];
+  $("stage-title").textContent = {
+    robotics: "Route and stopping envelope",
+    telecom: "Radio load and service quality",
+    "oil-gas": "Pressure, proposals and shutdown",
+    provider: "Content arrival and stream lifecycle",
+    tools: "Tool access and trust boundaries",
+    coding: "Change, test and workspace isolation",
+  }[selected];
+  updateWorkflowEvidence();
   if (!frame) {
     metrics([
-      ["Simulation clock", "—", "Begins with the engine"],
-      ["Frames", "0", "Collected during the run"],
-      ["Scenario checks", "—", "Awaiting a run"],
-      ["Seed", $("seed").value, "Reproducible input"],
+      ["Outcome", "Awaiting run", "Measurements appear after execution"],
+      ["Selected scenario", definitions[selected].title, "Published sample data"],
+      ["Playback", "Live measurements", "Display pacing is separate from simulation time"],
+      ["Seed", $("seed").value, "Repeatable input"],
     ]);
   } else if (selected === "robotics") {
     metrics([
-      ["Simulation clock", `${number(frame.t, 2)} s`, "Current phase"],
-      ["Speed", `${number(frame.speed_mps, 2)} m/s`, "Actual body velocity"],
-      ["Forward range", `${number(frame.range_m, 2)} m`, "MuJoCo ray sensor"],
       [
-        "Safety state",
-        frame.safety_stop ? "Stopped" : "Moving",
-        words(frame.stop_reason || "NONE"),
+        "Goal remaining",
+        `${number(frame.goal_remaining_m, 2)} m`,
+        `Goal tolerance ${number(frame.goal_tolerance_m, 2)} m`,
+      ],
+      [
+        "Range above stop limit",
+        `${number(frame.range_m - frame.stop_clearance_m, 2)} m`,
+        `Ray range ${number(frame.range_m, 2)} m · stop at ${number(frame.stop_clearance_m, 2)} m`,
+      ],
+      [
+        "Sensor age",
+        `${number(frame.sensor_age_s * 1000, 0)} ms`,
+        `Timeout ${number(frame.sensor_timeout_s * 1000, 0)} ms`,
+      ],
+      [
+        "Motion / protection",
+        frame.monitor_enabled === false
+          ? "Control test"
+          : frame.safety_stop
+            ? "Stopped"
+            : frame.goal_remaining_m <= frame.goal_tolerance_m
+              ? "Goal reached"
+              : "Moving",
+        frame.monitor_enabled === false
+          ? "Monitor deliberately bypassed"
+          : `${number(frame.speed_mps, 2)} m/s · ${words(frame.stop_reason)}`,
       ],
     ]);
   } else if (selected === "telecom") {
     metrics([
-      ["Simulation clock", `${number(frame.t_seconds, 2)} s`, words(frame.phase)],
-      ["Queued packets", String(frame.queue_packets ?? "—"), "All simulated UEs"],
-      ["Throughput", `${number(frame.throughput_mbps)} Mb/s`, "Measured over last 10 ms"],
-      ["Dropped packets", String(frame.dropped_packets ?? "—"), "Finite-queue drops"],
+      [
+        "Offered / capacity",
+        `${number(frame.offered_mbps, 0)} / ${number(frame.capacity_mbps, 0)} Mb/s`,
+        frame.arrival_window_open
+          ? "Configured traffic · arrivals active"
+          : "Arrival window ended · draining queues",
+      ],
+      [
+        "Observed p95 delay",
+        `${number(frame.observed_latency_p95_ms, 2)} ms`,
+        `${frame.latency_sample_count ?? 0} delivered packets · cumulative in phase`,
+      ],
+      [
+        "Queue / drops",
+        `${frame.queue_packets} / ${frame.dropped_packets}`,
+        `Queued / dropped · limit ${frame.queue_limit_packets} per UE`,
+      ],
+      [
+        "Service fairness",
+        number(frame.jain_fairness, 3),
+        "Jain index · 1 means equal delivered counts",
+      ],
+    ]);
+  } else if (selected === "oil-gas") {
+    metrics([
+      [
+        "Pressure / trip",
+        `${number(frame.pressure_pa / 100000, 2)} / ${number(frame.hh_pressure_pa / 100000, 1)} bar(a)`,
+        `Sensor reports ${number(frame.published_pressure_pa / 100000, 2)} bar(a)`,
+      ],
+      [
+        "Requested / effective load",
+        `${number(frame.requested_load * 100, 0)}% / ${number(frame.compressor_load * 100, 0)}%`,
+        frame.safety_stop ? "Shutdown isolates inflow" : "Accepted command / effective drive",
+      ],
+      ["Sensor / action", `${number(frame.sensor_age_s, 2)} s old`, words(frame.action_status)],
+      [
+        "Protection",
+        frame.safety_stop ? "Shutdown latched" : "Monitoring",
+        words(frame.stop_reason),
+      ],
     ]);
   } else if (selected === "provider" && providerLatest) {
+    const first = providerTimeline.find((sample) => sample.event_type === "content");
+    const finish = providerTimeline.find((sample) => sample.event_type === "finish");
     metrics([
-      ["SSE chunks received", String(providerLatest.chunk_index), "Actual parsed HTTP events"],
-      ["Content received", `${providerLatest.total_bytes} bytes`, "UTF-8 response content"],
       [
-        "Observed stream span",
-        `${number(providerLatest.elapsed_ms)} ms`,
-        "Wall clock · visual pacing included",
+        "First content receipt",
+        `${number(first?.elapsed_ms)} ms`,
+        "First nonempty content · local HTTP + playback pace",
       ],
       [
-        "Stream state",
-        providerLatest.stream_finished ? "Finished" : "Receiving",
-        providerLatest.stream_finished ? "Finish event received" : "Awaiting finish event",
+        "Finish receipt",
+        finish ? `${number(finish.elapsed_ms)} ms` : "Awaiting finish",
+        "Observed finish event · local fixture",
+      ],
+      [
+        "Content reconstructed",
+        `${providerLatest.total_bytes} bytes`,
+        `${providerLatest.chunk_index} SSE events · UTF-8 bytes, not tokens`,
+      ],
+      [
+        "Cancel reached upstream",
+        providerDisconnectObserved ? "Confirmed" : "Not yet observed",
+        providerDisconnectObserved
+          ? "Local server observed disconnect"
+          : "Separate cancellation control",
       ],
     ]);
-  } else {
+  } else if (selected === "tools") {
     metrics([
-      ["Completed checks", String(frame.completed_checks ?? "—"), "Real transport / process work"],
-      ["Latest check", frame.passed ? "Passed" : "Failed", words(frame.phase)],
-      ["Frames", String(state.frames_received || trace.length), "Collected during the run"],
-      ["Seed", String(state.seed ?? 7), "Repeatable sample conditions"],
+      [
+        "Tool discovery",
+        observedOutcome("stdio_handshake_and_tool_discovery", "1 registered tool"),
+        "get_build_config · read-only fixture",
+      ],
+      [
+        "Valid tool call",
+        observedOutcome("real_tool_roundtrip", "Returned"),
+        "Build target and LTO contract",
+      ],
+      [
+        "Injected tool text",
+        observedOutcome(
+          "untrusted_injection_fixture_reaches_boundary",
+          "Delivered as untrusted data",
+        ),
+        "Sanitization is tested separately in live mode",
+      ],
+      [
+        "Subprocess cleanup",
+        observedOutcome("server_process_reaped_after_session", "Exited"),
+        "Observed after protocol session closes",
+      ],
+    ]);
+  } else if (selected === "coding") {
+    metrics([
+      [
+        "Baseline test",
+        observedOutcome("baseline_test_exposes_real_bug", "Bug reproduced"),
+        "Expected failure before the fix",
+      ],
+      [
+        "Fixed worktree test",
+        observedOutcome("patched_worktree_passes_contract", "Passed"),
+        "Actual Python unittest execution",
+      ],
+      [
+        "Original checkout",
+        observedOutcome("original_checkout_unchanged", "Unchanged"),
+        "Separate from the agent worktree",
+      ],
+      [
+        "Workspace cleanup",
+        observedOutcome("temporary_repository_removed", "Removed"),
+        "Temporary repository and worktree",
+      ],
     ]);
   }
 }
@@ -235,12 +411,29 @@ function applyFrame(payload) {
   }
   trace.push(frame);
   if (trace.length > 600) trace.shift();
-  $("phase").textContent = words(frame.phase || "Engine running");
+  $("phase").textContent =
+    selected === "oil-gas" && frame.phase === "stale-sensor-stop"
+      ? "Separate receiver experiment · stale-sensor stop"
+      : words(frame.phase || "Engine running");
   $("telemetry").textContent = JSON.stringify(frame, null, 2);
   updateMetrics();
   requestDraw();
 }
-function renderState(next) {
+function renderState(next, { reset = false, revision = next.event_id } = {}) {
+  if (!Number.isSafeInteger(revision) || revision < 0) return;
+  if (reset) {
+    serverGeneration += 1;
+    lastRevision = -1;
+    lastRun = -1;
+  }
+  if (revision < lastRevision) return;
+  if (revision === lastRevision) {
+    // A delayed HTTP response must not undo a terminal SSE state. Equal
+    // revisions can advance to a terminal state, but never regress from one.
+    const rank = { idle: 0, running: 1, cancelling: 2, completed: 3, cancelled: 3, failed: 3 };
+    if (next.run_id !== state.run_id || rank[next.status] <= rank[state.status]) return;
+  }
+  lastRevision = revision;
   if (next.run_id !== lastRun) {
     lastRun = next.run_id;
     trace = [];
@@ -347,6 +540,7 @@ function renderState(next) {
 }
 async function action(path, body) {
   showError("");
+  const generation = serverGeneration;
   try {
     const response = await fetch(path, {
       method: "POST",
@@ -354,9 +548,11 @@ async function action(path, body) {
       body: JSON.stringify(body),
     });
     const data = await response.json();
+    if (generation !== serverGeneration) return;
     if (!response.ok) throw new Error(data.error || "This action could not complete. Try again.");
     renderState(data);
   } catch (error) {
+    if (generation !== serverGeneration) return;
     showError(
       error instanceof TypeError
         ? "The local lab is unavailable. Check its terminal and reconnect."
@@ -479,6 +675,14 @@ function draw() {
     canvas.setAttribute("aria-label", "Awaiting a simulation run. No telemetry received.");
     return;
   }
+  if (selected === "oil-gas") {
+    drawOilGas(compact);
+    return;
+  }
+  if (selected === "tools" || selected === "coding") {
+    drawWorkflow(compact);
+    return;
+  }
   if (compact) {
     drawCompact();
     return;
@@ -487,6 +691,128 @@ function draw() {
   else if (selected === "telecom") drawTelecom();
   else if (selected === "provider" && providerLatest) drawProvider(false);
   else drawContract();
+}
+function drawOilGas(compact) {
+  const W = canvas.width,
+    ink = color("--ink"),
+    muted = color("--muted");
+  const accent = color("--accent"),
+    danger = color("--danger");
+  const stopped = Boolean(frame.safety_stop),
+    cy = compact ? 145 : 155;
+  const inlet = compact ? 90 : 170,
+    receiver = W / 2,
+    outlet = compact ? W - 90 : W - 170;
+  text("GAS COMPRESSION · DISCHARGE RECEIVER", 28, 38, compact ? 23 : 21, ink);
+  text(
+    `${frame.phase === "stale-sensor-stop" ? "New receiver · stale-sensor test" : words(frame.phase)} · ${number(frame.t, 1)} s simulated`,
+    28,
+    73,
+    compact ? 24 : 19,
+    muted,
+  );
+  line(inlet + 32, cy, receiver - 80, cy, stopped ? muted : accent, 5);
+  line(receiver + 80, cy, outlet - 30, cy, frame.outlet_opening > 0.1 ? accent : danger, 5);
+  circle(
+    inlet,
+    cy,
+    31,
+    stopped ? color("--danger-soft") : color("--accent-soft"),
+    stopped ? danger : accent,
+  );
+  text(stopped ? "×" : "›", inlet, cy + 13, 42, stopped ? danger : accent, "center");
+  ctx.fillStyle = color("--surface");
+  ctx.strokeStyle = stopped ? danger : accent;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(receiver - 79, cy - 55, 158, 110, 26);
+  ctx.fill();
+  ctx.stroke();
+  text(number(frame.pressure_pa / 100000, 2), receiver, cy + 7, compact ? 40 : 43, ink, "center");
+  text("bar(a)", receiver, cy + 37, 23, muted, "center");
+  circle(
+    outlet,
+    cy,
+    23,
+    frame.outlet_opening > 0.1 ? color("--accent-soft") : color("--danger-soft"),
+    frame.outlet_opening > 0.1 ? accent : danger,
+  );
+  text("Compressor", inlet, cy + 83, compact ? 25 : 20, ink, "center");
+  text("Receiver", receiver, cy + 83, compact ? 25 : 20, ink, "center");
+  text(
+    `Outlet · ${number(frame.outlet_opening * 100, 0)}%`,
+    outlet,
+    cy + 83,
+    compact ? 25 : 20,
+    ink,
+    "center",
+  );
+  const x = 45,
+    y = compact ? 290 : 302,
+    width = W - 90,
+    height = compact ? 90 : 125;
+  const ceiling = Math.max(frame.hh_pressure_pa * 1.15, frame.pressure_pa * 1.1);
+  const py = (pressure) => y + height - Math.max(0, Math.min(1, pressure / ceiling)) * height;
+  line(x, y + height, x + width, y + height, muted);
+  ctx.save();
+  ctx.setLineDash([7, 6]);
+  line(x, py(frame.hh_pressure_pa), x + width, py(frame.hh_pressure_pa), danger, 2);
+  ctx.restore();
+  text(
+    `High-high trip ${number(frame.hh_pressure_pa / 100000, 1)} bar(a)`,
+    x,
+    y - 13,
+    compact ? 23 : 18,
+    danger,
+  );
+  trace.forEach((sample, i) => {
+    if (!i) return;
+    line(
+      x + ((i - 1) / Math.max(1, trace.length - 1)) * width,
+      py(trace[i - 1].pressure_pa),
+      x + (i / Math.max(1, trace.length - 1)) * width,
+      py(sample.pressure_pa),
+      color("--chart"),
+      3,
+    );
+  });
+  ctx.save();
+  ctx.setLineDash([4, 5]);
+  trace.forEach((sample, i) => {
+    if (i)
+      line(
+        x + ((i - 1) / Math.max(1, trace.length - 1)) * width,
+        py(trace[i - 1].published_pressure_pa),
+        x + (i / Math.max(1, trace.length - 1)) * width,
+        py(sample.published_pressure_pa),
+        color("--warning"),
+        2,
+      );
+  });
+  ctx.restore();
+  const tripIndex = trace.findIndex((sample) => sample.safety_stop);
+  if (tripIndex >= 0)
+    circle(
+      x + (tripIndex / Math.max(1, trace.length - 1)) * width,
+      py(trace[tripIndex].trip_pressure_pa ?? trace[tripIndex].pressure_pa),
+      5,
+      danger,
+    );
+  text("Truth", x + width - 180, y + height - 10, compact ? 21 : 15, color("--chart"));
+  text("Sensor", x + width - 22, y + height - 10, compact ? 21 : 15, color("--warning"), "right");
+  text(
+    stopped
+      ? `Shutdown latched · ${words(frame.stop_reason)}`
+      : "Independent pressure protection active",
+    x,
+    compact ? 420 : 470,
+    compact ? 23 : 20,
+    stopped ? danger : accent,
+  );
+  canvas.setAttribute(
+    "aria-label",
+    `Gas receiver ${words(frame.phase)}, pressure ${number(frame.pressure_pa / 100000, 2)} bar absolute; trip ${number(frame.hh_pressure_pa / 100000, 1)} bar; inlet ${number(frame.inflow_kg_s, 3)} kilograms per second, outlet ${number(frame.outflow_kg_s, 3)}; safety stop ${stopped}.`,
+  );
 }
 function drawCompact() {
   const ink = color("--ink"),
@@ -548,7 +874,11 @@ function drawCompact() {
       ink,
     );
     text(
-      frame.safety_stop ? `Safety stop: ${words(frame.stop_reason)}` : "Controller active",
+      frame.monitor_enabled === false
+        ? "Collision control · monitor bypassed"
+        : frame.safety_stop
+          ? `Safety stop: ${words(frame.stop_reason)}`
+          : `Goal remaining ${number(frame.goal_remaining_m, 2)} m`,
       28,
       405,
       24,
@@ -561,7 +891,7 @@ function drawCompact() {
   } else if (selected === "telecom") {
     text(`Subscriber queues · ${words(frame.phase)}`, 28, 43, 25, ink);
     const queues = frame.per_ue_queue_packets || [0, 0, 0, 0],
-      maximum = Math.max(1, ...queues);
+      maximum = Math.max(1, frame.queue_limit_packets || 1);
     queues.forEach((value, i) => {
       const y = 94 + i * 58;
       text(`UE ${i + 1}`, 28, y + 6, 24, ink);
@@ -569,9 +899,15 @@ function drawCompact() {
       ctx.fillRect(130, y - 14, 365, 24);
       ctx.fillStyle = color("--chart");
       ctx.fillRect(130, y - 14, (value / maximum) * 365, 24);
-      text(String(value), 525, y + 6, 24, ink);
+      text(`${value}/${frame.queue_limit_packets}`, 510, y + 6, 22, ink);
     });
-    text(`${number(frame.throughput_mbps)} Mb/s observed`, 28, 350, 27, ink);
+    text(
+      `${number(frame.throughput_mbps)} / ${number(frame.capacity_mbps)} Mb/s`,
+      28,
+      350,
+      26,
+      ink,
+    );
     text(
       `${frame.allocated_prbs} PRBs · ${frame.bandwidth_mhz} MHz · ${number(frame.t_seconds, 2)} s`,
       28,
@@ -776,9 +1112,40 @@ function drawRobot() {
     color("--ink"),
     "center",
   );
+  const panelX = 650;
+  text("GOAL & PROTECTION", panelX, 100, 17, color("--ink"));
+  text(`${number(frame.goal_remaining_m, 2)} m to goal`, panelX, 150, 27, color("--ink"));
+  text(`Tolerance ${number(frame.goal_tolerance_m, 2)} m`, panelX, 184, 16);
+  text(
+    `Range ${number(frame.range_m, 2)} m / stop ${number(frame.stop_clearance_m, 2)} m`,
+    panelX,
+    241,
+    21,
+    color("--ink"),
+  );
+  text(
+    `Sensor ${number(frame.sensor_age_s * 1000, 0)} / ${number(frame.sensor_timeout_s * 1000, 0)} ms`,
+    panelX,
+    287,
+    21,
+    color("--ink"),
+  );
+  text(
+    frame.monitor_enabled === false
+      ? "COLLISION CONTROL · MONITOR BYPASSED"
+      : "Independent monitor enabled",
+    panelX,
+    343,
+    16,
+    frame.monitor_enabled === false ? color("--warning") : color("--accent"),
+  );
   text(`Contacts ${frame.contacts ?? 0}`, 30, 455, 16);
   text(
-    frame.safety_stop ? `Safety stop · ${words(frame.stop_reason)}` : "Controller active",
+    frame.monitor_enabled === false
+      ? "Collision control · monitor bypassed"
+      : frame.safety_stop
+        ? `Safety stop · ${words(frame.stop_reason)}`
+        : "Controller active",
     1050,
     455,
     16,
@@ -793,7 +1160,7 @@ function drawRobot() {
 function drawTelecom() {
   text("SUBSCRIBER QUEUES → RADIO CAPACITY", 30, 35, 14);
   const queues = frame.per_ue_queue_packets || [0, 0, 0, 0],
-    maxQueue = Math.max(1, ...queues);
+    maxQueue = Math.max(1, frame.queue_limit_packets || 1);
   queues.forEach((queue, i) => {
     const y = 105 + i * 76;
     circle(70, y, 18, color("--surface"), color("--blue"));
@@ -802,7 +1169,7 @@ function drawTelecom() {
     ctx.fillRect(175, y - 11, 180, 22);
     ctx.fillStyle = color("--chart");
     ctx.fillRect(175, y - 11, (queue / maxQueue) * 180, 22);
-    text(String(queue), 369, y + 5, 14);
+    text(`${queue}/${frame.queue_limit_packets}`, 369, y + 5, 14);
     line(415, y, 465, 245, color("--line"), 2);
   });
   circle(485, 245, 32, color("--accent-soft"), color("--accent"));
@@ -823,6 +1190,12 @@ function drawTelecom() {
   text("Observed throughput", chartX, 82, 17, color("--ink"));
   line(chartX, chartY, chartX, chartY + chartH, color("--line"));
   line(chartX, chartY + chartH, chartX + chartW, chartY + chartH, color("--line"));
+  const capacityY = chartY + chartH - (frame.capacity_mbps / maximum) * chartH;
+  ctx.save();
+  ctx.setLineDash([7, 6]);
+  line(chartX, capacityY, chartX + chartW, capacityY, color("--accent"), 2);
+  ctx.restore();
+  text("Capacity reference", chartX + chartW, capacityY - 10, 13, color("--accent"), "right");
   const values = trace.slice(-180);
   values.forEach((item, i) => {
     if (i > 0)
@@ -842,6 +1215,102 @@ function drawTelecom() {
   canvas.setAttribute(
     "aria-label",
     `Telecom ${words(frame.phase)} at ${number(frame.t_seconds, 2)} seconds, ${frame.queue_packets} queued packets, throughput ${number(frame.throughput_mbps)} megabits per second and ${frame.dropped_packets} drops.`,
+  );
+}
+function drawWorkflow(compact) {
+  const isCoding = selected === "coding";
+  const stages = isCoding
+    ? [
+        ["Reproduce bug", ["baseline_test_exposes_real_bug"], "Expected test failure"],
+        [
+          "Constrain change",
+          ["path_escape_action_rejected", "stale_patch_rejected"],
+          "Unsafe edits rejected",
+        ],
+        [
+          "Verify the fix",
+          ["patched_worktree_passes_contract", "only_approved_source_changed"],
+          "Tests pass · approved file",
+        ],
+        [
+          "Preserve & clean",
+          ["original_checkout_unchanged", "worktree_cleanup", "temporary_repository_removed"],
+          "Original intact · cleaned",
+        ],
+      ]
+    : [
+        ["Discover tools", ["stdio_handshake_and_tool_discovery"], "Registered tool observed"],
+        ["Read tool data", ["real_tool_roundtrip"], "Legitimate build configuration"],
+        [
+          "Deny invalid calls",
+          [
+            "schema_rejects_unregistered_target",
+            "schema_rejects_missing_required_argument",
+            "unknown_execution_tool_rejected",
+          ],
+          "Schema and tool allowlist",
+        ],
+        ["Close session", ["server_process_reaped_after_session"], "Child-process exit observed"],
+      ];
+  const ink = color("--ink"),
+    muted = color("--muted"),
+    accent = color("--accent");
+  text(
+    isCoding ? "ISOLATED CHANGE · EXECUTABLE EVIDENCE" : "TOOL ACCESS · OBSERVED BOUNDARIES",
+    28,
+    40,
+    compact ? 24 : 23,
+    ink,
+  );
+  if (compact) {
+    stages.forEach(([label, names, note], i) => {
+      const checks = names.map(observedCheck),
+        ready = checks.every(Boolean),
+        passed = ready && checks.every((c) => c.passed);
+      const y = 106 + i * 82,
+        stroke = ready ? (passed ? accent : color("--danger")) : color("--line");
+      if (i) line(52, y - 60, 52, y - 23, color("--line"), 3);
+      circle(52, y, 19, ready ? color("--accent-soft") : color("--surface"), stroke);
+      text(ready ? (passed ? "✓" : "×") : String(i + 1), 52, y + 8, 23, stroke, "center");
+      text(label, 90, y - 2, 28, ink);
+      text(ready ? note : "Awaiting observation", 90, y + 28, 22, muted);
+    });
+  } else {
+    stages.forEach(([label, names, note], i) => {
+      const checks = names.map(observedCheck),
+        ready = checks.every(Boolean),
+        passed = ready && checks.every((c) => c.passed);
+      const x = 40 + i * 260,
+        stroke = ready ? (passed ? accent : color("--danger")) : color("--line");
+      ctx.fillStyle = color("--surface");
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, 130, 230, 185, 14);
+      ctx.fill();
+      ctx.stroke();
+      text(String(i + 1), x + 20, 169, 20, stroke);
+      text(label, x + 20, 211, 22, ink);
+      text(ready ? (passed ? "Observed" : "Needs attention") : "Awaiting", x + 20, 253, 18, stroke);
+      text(note, x + 20, 350, 14, muted);
+      if (i < 3) line(x + 232, 220, x + 255, 220, color("--line"), 3);
+    });
+    if (!isCoding)
+      text(
+        observedCheck("untrusted_injection_fixture_reaches_boundary")
+          ? "Injected text delivered as untrusted data · sanitization is a separate live check"
+          : "Tool-result trust is separate from permission to call a tool",
+        40,
+        427,
+        18,
+        color("--warning"),
+      );
+    else
+      text("The observed code change appears below after the patch is tested.", 40, 427, 18, muted);
+  }
+  canvas.setAttribute(
+    "aria-label",
+    `${definitions[selected].title}: ${stages.map(([label, names]) => label + ": " + (names.every((name) => observedCheck(name)?.passed) ? "observed" : "awaiting or needs attention")).join("; ")}.`,
   );
 }
 function drawContract() {
@@ -879,11 +1348,26 @@ events.addEventListener("open", () => {
 events.addEventListener("error", () => {
   $("connection").textContent = "Reconnecting…";
 });
-events.addEventListener("snapshot", (event) => renderState(JSON.parse(event.data)));
-events.addEventListener("state", (event) => renderState(JSON.parse(event.data)));
+events.addEventListener("snapshot", (event) =>
+  renderState(JSON.parse(event.data), { revision: Number(event.lastEventId) }),
+);
+events.addEventListener("reset", (event) =>
+  renderState(JSON.parse(event.data), { reset: true, revision: Number(event.lastEventId) }),
+);
+events.addEventListener("state", (event) =>
+  renderState(JSON.parse(event.data), { revision: Number(event.lastEventId) }),
+);
 events.addEventListener("frame", (event) => {
   const message = JSON.parse(event.data);
-  if (message.run_id !== state.run_id) return;
+  const revision = Number(event.lastEventId);
+  if (
+    message.run_id !== state.run_id ||
+    !Number.isSafeInteger(revision) ||
+    revision <= lastRevision ||
+    !["running", "cancelling"].includes(state.status)
+  )
+    return;
+  lastRevision = revision;
   state.frames_received = (state.frames_received || 0) + 1;
   $("frame-count").textContent = `${state.frames_received} frames received`;
   applyFrame(message.frame);
