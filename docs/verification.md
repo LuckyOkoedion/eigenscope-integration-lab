@@ -4,7 +4,7 @@ The lab is tested across supported Python platforms, Node.js and Docker. Each sc
 
 ## Automated checks
 
-The [release CI run](https://github.com/LuckyOkoedion/eigenscope-integration-lab/actions/workflows/ci.yml) passed all seven jobs.
+The [release CI run](https://github.com/LuckyOkoedion/eigenscope-integration-lab/actions/runs/41157650762) passed all seven jobs.
 
 | Coverage | Result |
 |---|---|
@@ -37,7 +37,7 @@ The local simulator results above verify the lab's engines and integrations. Hos
 
 The [dependency audit](https://github.com/LuckyOkoedion/eigenscope-integration-lab/actions/workflows/dependencies.yml) reported zero known advisories among the indexed Python dependencies. Local/custom packages are outside that advisory index. The Node production dependency audit also reported zero known advisories. [Python audit](verification/dependency-audit.json) · [Node audit](verification/npm-audit.json)
 
-The release wheel contains all three dashboard assets and the robot model. All 21 packaged source/asset files matched the source tree byte-for-byte; archive integrity and license inclusion passed. Release checksums identify the downloadable wheel and source archive.
+The release wheel contains all three dashboard assets and the robot model. All 21 packaged source/asset files matched the source tree byte-for-byte; archive integrity and license inclusion passed. An isolated wheel installation and CLI entry point also passed. [Packaging checks](verification/packaging.json) and release checksums identify the downloadable wheel and source archive.
 
 ## Dashboard examples
 

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "code_commit": "a2737e6c86a6539d535c037ccc8b1166155852e1",
-  "ci_run_url": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/actions/runs/41156834608",
+  "code_commit": "8e5e081e76a056281d1d091dc6af538dbdb2c8a3",
+  "ci_run_url": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/actions/runs/41157650762",
   "python_matrix": [
     {
       "job": "lab-macos-15-py3.12",

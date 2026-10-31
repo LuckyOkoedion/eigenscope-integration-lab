@@ -1,0 +1,24 @@
+{
+  "lab_version": "0.1.2",
+  "source_commit": "8e5e081e76a056281d1d091dc6af538dbdb2c8a3",
+  "packaged_source_asset_files": 21,
+  "source_asset_byte_matches": true,
+  "wheel_archive_integrity": true,
+  "source_archive_safe_paths": true,
+  "license_in_both_archives": true,
+  "agents_guide_in_source_archive": true,
+  "private_path_and_credential_pattern_scan_passed": true,
+  "files": [
+    {
+      "file": "eigenscope_integration_lab-0.1.2-py3-none-any.whl",
+      "bytes": 89329,
+      "sha256": "5b9f72749decfe6a8ef8acad5166754a93ab27878d6c4a8881162d3c6d7fd189"
+    },
+    {
+      "file": "eigenscope_integration_lab-0.1.2.tar.gz",
+      "bytes": 1532336,
+      "sha256": "3c1226ab5f7df1f01260c11c79a25ac833e4d984ccb01fb79b6ee969d335d4df"
+    }
+  ],
+  "isolated_wheel_install_and_cli_help": "PASS"
+}
