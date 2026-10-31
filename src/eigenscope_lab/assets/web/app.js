@@ -474,6 +474,10 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
     $("phase").textContent = "Starting engine · Waiting for the first observation…";
   else if (state.status === "cancelling")
     $("phase").textContent = "Stopping at the next engine checkpoint…";
+  else if (state.status === "cancelled")
+    $("phase").textContent = "Run stopped before any measurement was received.";
+  else if (state.status === "failed")
+    $("phase").textContent = "The run ended before its first measurement.";
   if (state.status === "idle") {
     frame = null;
     trace = [];
@@ -650,11 +654,14 @@ function circle(x, y, radius, fill, stroke) {
 function draw() {
   const compact = canvas.clientWidth < 650;
   const desiredWidth = compact ? 640 : 1080;
-  if (canvas.width !== desiredWidth) {
+  const workflow = selected === "tools" || selected === "coding";
+  const desiredHeight = compact ? 440 : workflow ? 340 : 500;
+  if (canvas.width !== desiredWidth || canvas.height !== desiredHeight) {
     canvas.width = desiredWidth;
-    canvas.height = compact ? 440 : 500;
+    canvas.height = desiredHeight;
   }
   canvas.classList.toggle("compact", compact);
+  canvas.classList.toggle("workflow", workflow && !compact);
   const W = canvas.width,
     H = canvas.height;
   ctx.clearRect(0, 0, W, H);
@@ -1286,14 +1293,14 @@ function drawWorkflow(compact) {
       ctx.strokeStyle = stroke;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(x, 130, 230, 185, 14);
+      ctx.roundRect(x, 90, 230, 115, 14);
       ctx.fill();
       ctx.stroke();
-      text(String(i + 1), x + 20, 169, 20, stroke);
-      text(label, x + 20, 211, 22, ink);
-      text(ready ? (passed ? "Observed" : "Needs attention") : "Awaiting", x + 20, 253, 18, stroke);
-      text(note, x + 20, 350, 14, muted);
-      if (i < 3) line(x + 232, 220, x + 255, 220, color("--line"), 3);
+      text(String(i + 1), x + 20, 119, 20, stroke);
+      text(label, x + 20, 157, 22, ink);
+      text(ready ? (passed ? "Observed" : "Needs attention") : "Awaiting", x + 20, 190, 18, stroke);
+      text(note, x + 20, 235, 14, muted);
+      if (i < 3) line(x + 232, 160, x + 255, 160, color("--line"), 3);
     });
     if (!isCoding)
       text(
@@ -1301,12 +1308,12 @@ function drawWorkflow(compact) {
           ? "Injected text delivered as untrusted data · sanitization is a separate live check"
           : "Tool-result trust is separate from permission to call a tool",
         40,
-        427,
+        290,
         18,
         color("--warning"),
       );
     else
-      text("The observed code change appears below after the patch is tested.", 40, 427, 18, muted);
+      text("The observed code change appears below after the patch is tested.", 40, 290, 18, muted);
   }
   canvas.setAttribute(
     "aria-label",

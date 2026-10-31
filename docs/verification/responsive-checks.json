@@ -1,530 +1,530 @@
 [
   {
-    "scenario": "robotics",
-    "width": 1440,
-    "theme": "light",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Robotics",
+    "pass": true,
+    "scenario": "robotics",
+    "theme": "light",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "telecom",
-    "width": 1440,
-    "theme": "light",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Telecom",
+    "pass": true,
+    "scenario": "telecom",
+    "theme": "light",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "oil-gas",
-    "width": 1440,
-    "theme": "light",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Oil & Gas",
+    "pass": true,
+    "scenario": "oil-gas",
+    "theme": "light",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "provider",
-    "width": 1440,
-    "theme": "light",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Model provider",
+    "pass": true,
+    "scenario": "provider",
+    "theme": "light",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "tools",
-    "width": 1440,
-    "theme": "light",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "MCP tools",
+    "pass": true,
+    "scenario": "tools",
+    "theme": "light",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "coding",
-    "width": 1440,
-    "theme": "light",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Coding workflow",
+    "pass": true,
+    "scenario": "coding",
+    "theme": "light",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "robotics",
-    "width": 1440,
-    "theme": "dark",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Robotics",
+    "pass": true,
+    "scenario": "robotics",
+    "theme": "dark",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "telecom",
-    "width": 1440,
-    "theme": "dark",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Telecom",
+    "pass": true,
+    "scenario": "telecom",
+    "theme": "dark",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "oil-gas",
-    "width": 1440,
-    "theme": "dark",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Oil & Gas",
+    "pass": true,
+    "scenario": "oil-gas",
+    "theme": "dark",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "provider",
-    "width": 1440,
-    "theme": "dark",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Model provider",
+    "pass": true,
+    "scenario": "provider",
+    "theme": "dark",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "tools",
-    "width": 1440,
-    "theme": "dark",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "MCP tools",
+    "pass": true,
+    "scenario": "tools",
+    "theme": "dark",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "coding",
-    "width": 1440,
-    "theme": "dark",
     "canvasWidth": 1114,
     "controlsFit": true,
     "documentWidth": 1440,
     "heading": "Coding workflow",
+    "pass": true,
+    "scenario": "coding",
+    "theme": "dark",
     "viewport": 1440,
-    "pass": true
+    "width": 1440
   },
   {
-    "scenario": "robotics",
-    "width": 768,
-    "theme": "light",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Robotics",
+    "pass": true,
+    "scenario": "robotics",
+    "theme": "light",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "telecom",
-    "width": 768,
-    "theme": "light",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Telecom",
+    "pass": true,
+    "scenario": "telecom",
+    "theme": "light",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "oil-gas",
-    "width": 768,
-    "theme": "light",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Oil & Gas",
+    "pass": true,
+    "scenario": "oil-gas",
+    "theme": "light",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "provider",
-    "width": 768,
-    "theme": "light",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Model provider",
+    "pass": true,
+    "scenario": "provider",
+    "theme": "light",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "tools",
-    "width": 768,
-    "theme": "light",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "MCP tools",
+    "pass": true,
+    "scenario": "tools",
+    "theme": "light",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "coding",
-    "width": 768,
-    "theme": "light",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Coding workflow",
+    "pass": true,
+    "scenario": "coding",
+    "theme": "light",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "robotics",
-    "width": 768,
-    "theme": "dark",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Robotics",
+    "pass": true,
+    "scenario": "robotics",
+    "theme": "dark",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "telecom",
-    "width": 768,
-    "theme": "dark",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Telecom",
+    "pass": true,
+    "scenario": "telecom",
+    "theme": "dark",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "oil-gas",
-    "width": 768,
-    "theme": "dark",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Oil & Gas",
+    "pass": true,
+    "scenario": "oil-gas",
+    "theme": "dark",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "provider",
-    "width": 768,
-    "theme": "dark",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Model provider",
+    "pass": true,
+    "scenario": "provider",
+    "theme": "dark",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "tools",
-    "width": 768,
-    "theme": "dark",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "MCP tools",
+    "pass": true,
+    "scenario": "tools",
+    "theme": "dark",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "coding",
-    "width": 768,
-    "theme": "dark",
     "canvasWidth": 500,
     "controlsFit": true,
     "documentWidth": 768,
     "heading": "Coding workflow",
+    "pass": true,
+    "scenario": "coding",
+    "theme": "dark",
     "viewport": 768,
-    "pass": true
+    "width": 768
   },
   {
-    "scenario": "robotics",
-    "width": 390,
-    "theme": "light",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Robotics",
+    "pass": true,
+    "scenario": "robotics",
+    "theme": "light",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "telecom",
-    "width": 390,
-    "theme": "light",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Telecom",
+    "pass": true,
+    "scenario": "telecom",
+    "theme": "light",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "oil-gas",
-    "width": 390,
-    "theme": "light",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Oil & Gas",
+    "pass": true,
+    "scenario": "oil-gas",
+    "theme": "light",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "provider",
-    "width": 390,
-    "theme": "light",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Model provider",
+    "pass": true,
+    "scenario": "provider",
+    "theme": "light",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "tools",
-    "width": 390,
-    "theme": "light",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "MCP tools",
+    "pass": true,
+    "scenario": "tools",
+    "theme": "light",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "coding",
-    "width": 390,
-    "theme": "light",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Coding workflow",
+    "pass": true,
+    "scenario": "coding",
+    "theme": "light",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "robotics",
-    "width": 390,
-    "theme": "dark",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Robotics",
+    "pass": true,
+    "scenario": "robotics",
+    "theme": "dark",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "telecom",
-    "width": 390,
-    "theme": "dark",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Telecom",
+    "pass": true,
+    "scenario": "telecom",
+    "theme": "dark",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "oil-gas",
-    "width": 390,
-    "theme": "dark",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Oil & Gas",
+    "pass": true,
+    "scenario": "oil-gas",
+    "theme": "dark",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "provider",
-    "width": 390,
-    "theme": "dark",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Model provider",
+    "pass": true,
+    "scenario": "provider",
+    "theme": "dark",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "tools",
-    "width": 390,
-    "theme": "dark",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "MCP tools",
+    "pass": true,
+    "scenario": "tools",
+    "theme": "dark",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "coding",
-    "width": 390,
-    "theme": "dark",
     "canvasWidth": 356,
     "controlsFit": true,
     "documentWidth": 390,
     "heading": "Coding workflow",
+    "pass": true,
+    "scenario": "coding",
+    "theme": "dark",
     "viewport": 390,
-    "pass": true
+    "width": 390
   },
   {
-    "scenario": "robotics",
-    "width": 320,
-    "theme": "light",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Robotics",
+    "pass": true,
+    "scenario": "robotics",
+    "theme": "light",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "telecom",
-    "width": 320,
-    "theme": "light",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Telecom",
+    "pass": true,
+    "scenario": "telecom",
+    "theme": "light",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "oil-gas",
-    "width": 320,
-    "theme": "light",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Oil & Gas",
+    "pass": true,
+    "scenario": "oil-gas",
+    "theme": "light",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "provider",
-    "width": 320,
-    "theme": "light",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Model provider",
+    "pass": true,
+    "scenario": "provider",
+    "theme": "light",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "tools",
-    "width": 320,
-    "theme": "light",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "MCP tools",
+    "pass": true,
+    "scenario": "tools",
+    "theme": "light",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "coding",
-    "width": 320,
-    "theme": "light",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Coding workflow",
+    "pass": true,
+    "scenario": "coding",
+    "theme": "light",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "robotics",
-    "width": 320,
-    "theme": "dark",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Robotics",
+    "pass": true,
+    "scenario": "robotics",
+    "theme": "dark",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "telecom",
-    "width": 320,
-    "theme": "dark",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Telecom",
+    "pass": true,
+    "scenario": "telecom",
+    "theme": "dark",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "oil-gas",
-    "width": 320,
-    "theme": "dark",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Oil & Gas",
+    "pass": true,
+    "scenario": "oil-gas",
+    "theme": "dark",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "provider",
-    "width": 320,
-    "theme": "dark",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Model provider",
+    "pass": true,
+    "scenario": "provider",
+    "theme": "dark",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "tools",
-    "width": 320,
-    "theme": "dark",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "MCP tools",
+    "pass": true,
+    "scenario": "tools",
+    "theme": "dark",
     "viewport": 320,
-    "pass": true
+    "width": 320
   },
   {
-    "scenario": "coding",
-    "width": 320,
-    "theme": "dark",
     "canvasWidth": 286,
     "controlsFit": true,
     "documentWidth": 320,
     "heading": "Coding workflow",
+    "pass": true,
+    "scenario": "coding",
+    "theme": "dark",
     "viewport": 320,
-    "pass": true
+    "width": 320
   }
 ]

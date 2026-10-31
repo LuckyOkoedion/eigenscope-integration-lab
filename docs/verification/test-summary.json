@@ -1,20 +1,15 @@
 {
   "schema_version": 1,
-  "ci_jobs_passed": 7,
+  "code_commit": "a2737e6c86a6539d535c037ccc8b1166155852e1",
+  "ci_run_url": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/actions/runs/41156834608",
   "python_matrix": [
     {
       "job": "lab-macos-15-py3.12",
-      "tests": 175,
+      "tests": 254,
       "errors": 0,
       "failures": 0,
       "skipped": 0,
-      "engine_summary": {
-        "PASS": 5,
-        "FAIL": 0,
-        "BLOCKED": 0,
-        "ERROR": 0
-      },
-      "engine_checks": 54,
+      "scenario_checks": 88,
       "environment": {
         "python": "3.12.10",
         "platform": "Darwin",
@@ -23,17 +18,11 @@
     },
     {
       "job": "lab-ubuntu-24.04-py3.11",
-      "tests": 175,
+      "tests": 254,
       "errors": 0,
       "failures": 0,
       "skipped": 0,
-      "engine_summary": {
-        "PASS": 5,
-        "FAIL": 0,
-        "BLOCKED": 0,
-        "ERROR": 0
-      },
-      "engine_checks": 54,
+      "scenario_checks": 88,
       "environment": {
         "python": "3.11.18",
         "platform": "Linux",
@@ -42,17 +31,11 @@
     },
     {
       "job": "lab-ubuntu-24.04-py3.12",
-      "tests": 175,
+      "tests": 254,
       "errors": 0,
       "failures": 0,
       "skipped": 0,
-      "engine_summary": {
-        "PASS": 5,
-        "FAIL": 0,
-        "BLOCKED": 0,
-        "ERROR": 0
-      },
-      "engine_checks": 54,
+      "scenario_checks": 88,
       "environment": {
         "python": "3.12.3",
         "platform": "Linux",
@@ -61,17 +44,11 @@
     },
     {
       "job": "lab-ubuntu-24.04-py3.13",
-      "tests": 175,
+      "tests": 254,
       "errors": 0,
       "failures": 0,
       "skipped": 0,
-      "engine_summary": {
-        "PASS": 5,
-        "FAIL": 0,
-        "BLOCKED": 0,
-        "ERROR": 0
-      },
-      "engine_checks": 54,
+      "scenario_checks": 88,
       "environment": {
         "python": "3.13.18",
         "platform": "Linux",
@@ -80,17 +57,11 @@
     },
     {
       "job": "lab-windows-latest-py3.12",
-      "tests": 175,
+      "tests": 254,
       "errors": 0,
       "failures": 0,
       "skipped": 0,
-      "engine_summary": {
-        "PASS": 5,
-        "FAIL": 0,
-        "BLOCKED": 0,
-        "ERROR": 0
-      },
-      "engine_checks": 54,
+      "scenario_checks": 88,
       "environment": {
         "python": "3.12.10",
         "platform": "Windows",
@@ -99,18 +70,18 @@
     }
   ],
   "typescript": {
-    "tests_passed": 22,
+    "tests_passed": 26,
     "typecheck": "PASS",
-    "format_check": "PASS",
-    "production_npm_audit": "zero known advisories"
+    "format_check": "PASS"
   },
   "container": {
-    "all_five_engines": "PASS",
-    "checks_passed": 54,
+    "scenarios_passed": 6,
+    "scenario_checks_passed": 88,
     "nonroot_readonly_runtime": "PASS",
-    "http_state_and_packaged_assets": "PASS"
+    "http_state_and_assets": "PASS"
   },
-  "scope": "Repeated cross-platform executions establish compatibility; they are not independent semantic-accuracy samples.",
-  "sdk_snapshot_sha256": "4da938e7c6db1acffd3d3098e2e9c0ae692d0741cd7f1ee413f171e856f662b8",
-  "record_type": "reference execution; rerun workflows for the current revision"
+  "sdk_snapshots": {
+    "python_sha256": "4da938e7c6db1acffd3d3098e2e9c0ae692d0741cd7f1ee413f171e856f662b8",
+    "typescript_sha256": "80b9beda5c4292b3e07409db1898033366b737af140ba5b0a80414cfe9faeeff"
+  }
 }

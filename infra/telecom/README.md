@@ -73,7 +73,7 @@ loss. The lab-only cleanup also passed.
 
 Actual versions were Open5GS `2.8.0-48-gf87da61`, UERANSIM `3.2.6` and MongoDB
 `7.0.45`. The synthetic UE received `10.251.0.2`; all three ICMP packets returned,
-with observed mean RTT `0.727 ms`. This measurement covers those three synthetic
+with observed mean RTT `0.612 ms`. This measurement covers those three synthetic
 UE-to-UPF packets through the actual GTP-U tunnel.
 
 [Sanitized native evidence](../../docs/verification/native-5g.json) contains the

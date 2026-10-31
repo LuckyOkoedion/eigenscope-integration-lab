@@ -852,3 +852,7 @@ canvas.compact {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+canvas.workflow {
+  aspect-ratio: 1080 / 340;
+}
