@@ -1,0 +1,50 @@
+name: Native 5G stack (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-5g-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  registration-and-user-plane:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Linux Docker prerequisites
+        run: |
+          mkdir -p results
+          python3 infra/telecom/stack.py doctor > results/native-doctor.json
+      - name: Prepare isolated synthetic topology
+        run: python3 infra/telecom/stack.py prepare > results/native-prepare.json
+      - name: Fetch immutable images
+        run: python3 infra/telecom/stack.py pull
+      - name: Start lab-owned 5G services
+        run: python3 infra/telecom/stack.py up > results/native-up.json
+      - name: Verify actual registration and tunneled packets
+        run: python3 infra/telecom/stack.py verify > results/native-verification.json
+      - name: Collect only lab-owned simulator diagnostics
+        if: failure()
+        run: |
+          if test -f .lab/telecom/compose.json; then
+            docker compose -p eigenscope-lab-5gc -f .lab/telecom/compose.json logs --tail 100 > results/native-simulator.log 2>&1
+          fi
+      - name: Remove only this synthetic topology
+        if: always()
+        run: |
+          if test -f .lab/telecom/compose.json; then
+            python3 infra/telecom/stack.py down > results/native-cleanup.json
+          fi
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: native-5g-verification
+          path: results/
+          retention-days: 14

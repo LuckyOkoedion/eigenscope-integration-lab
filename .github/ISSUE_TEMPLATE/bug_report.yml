@@ -1,0 +1,22 @@
+name: Reproducible integration failure
+description: Report a synthetic scenario or SDK contract failure
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Synthetic reproduction
+      description: Command, input fixture and expected versus actual result. Do not include credentials or customer data.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Lab version, SDK/tool versions, operating system and scenario.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Relevant JSON checks or screenshot. Report vulnerabilities privately through SECURITY.md.

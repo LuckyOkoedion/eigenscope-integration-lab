@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/herlesupreeth/docker_open5gs.git",
+  "commit": "ff41a305959d1d7bd75c4ca935d5a8edc70d965a",
+  "resolved_on": "2026-10-30",
+  "platform": "linux/amd64",
+  "ueransim_source_build": {
+    "version": "3.3.0",
+    "commit": "6bf5a1a96aaef6ae8778b9d8b477ac6e2bbf8156",
+    "base_image": "ubuntu@sha256:8a2321a92b438238f93b4346fff61bc4259c99fdd4d9b52ee86f153fee0c344f",
+    "recipe": "Dockerfile.ueransim"
+  },
+  "images": {
+    "open5gs": "ghcr.io/herlesupreeth/docker_open5gs@sha256:a71a99c68d3b0a609cd0e686009cf90d8431e1fd23ee31613226c294fd906747",
+    "ueransim": "ghcr.io/herlesupreeth/docker_ueransim@sha256:676fe0a7511b43d5d1e06e379ba0eec2258f294b81505ee5ac02b2a09020e6e0",
+    "mongo": "docker.io/library/mongo@sha256:e634fcaae4d0915b365fb88c076dd33c851ed61a611c7ee9816aba6d6b5159cd"
+  },
+  "database_baseline": {
+    "version": "7.0.45",
+    "resolved_image_version": "7.0.45-jammy",
+    "reason": "Maintained MongoDB 7.0 patch line compatible with the pinned Open5GS deployment. Review the linked kernel compatibility guidance when upgrading the database major version.",
+    "references": [
+      "https://www.mongodb.com/docs/manual/release-notes/7.0/",
+      "https://www.mongodb.com/docs/manual/release-notes/8.0/",
+      "https://jira.mongodb.org/browse/SERVER-121912"
+    ]
+  },
+  "licenses": {
+    "docker_open5gs_configuration": "BSD-2-Clause",
+    "open5gs": "AGPL-3.0",
+    "ueransim": "AGPL-3.0",
+    "mongodb_server": "SSPL-1.0"
+  },
+  "provenance_note": "Image digests pin downloaded executables. They do not assert those image builds correspond exactly to the separately pinned configuration repository commit. Native version checks are captured during verification. MongoDB is an optional upstream dependency under SSPL, separately licensed from the Apache-2.0 lab and not represented as OSI-approved open source."
+}

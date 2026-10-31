@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eigenscope-integration-lab"
+version = "0.1.2"
+description = "Reproducible industry integration scenarios and adversarial contracts for EigenScope"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+license = "Apache-2.0"
+authors = [{name = "EigenScope contributors"}]
+keywords = ["eigenscope", "simulation", "robotics", "mcp", "telecom", "integration-testing"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Testing",
+]
+dependencies = []
+
+[project.optional-dependencies]
+robotics = ["mujoco>=3.3,<3.4; sys_platform == 'darwin' and platform_machine == 'x86_64'", "mujoco>=3.3,<4; sys_platform != 'darwin' or platform_machine != 'x86_64'", "numpy>=2,<3"]
+telecom = ["simpy>=4.1,<5"]
+provider = ["openai>=2,<3", "httpx>=0.28,<1"]
+tools = ["mcp>=1.30,<2", "cryptography>=50,<51"]
+live = ["eigenscope-sdk @ https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.2-4da938e7/eigenscope_sdk-0.2.2-py3-none-any.whl#sha256=4da938e7c6db1acffd3d3098e2e9c0ae692d0741cd7f1ee413f171e856f662b8"]
+all = ["eigenscope-integration-lab[robotics,telecom,provider,tools,live]"]
+
+[project.scripts]
+eigenscope-lab = "eigenscope_lab.cli:main"
+
+[project.urls]
+Homepage = "https://eigenscope.guardianai.network/"
+Repository = "https://github.com/LuckyOkoedion/eigenscope-integration-lab"
+Issues = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/issues"
+
+[dependency-groups]
+dev = ["pytest>=8.4,<10", "pytest-timeout>=2.4,<3", "ruff>=0.14,<1", "build>=1.3,<2", "pip-audit>=2.9,<3"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eigenscope_lab"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+timeout = 60
+markers = ["live: requires explicit credentials and a real EigenScope service", "industry: executes an installed third-party simulation/protocol engine"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.uv]
+package = true

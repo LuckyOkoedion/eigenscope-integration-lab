@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "ci_jobs_passed": 7,
+  "python_matrix": [
+    {
+      "job": "lab-macos-15-py3.12",
+      "tests": 175,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "engine_summary": {
+        "PASS": 5,
+        "FAIL": 0,
+        "BLOCKED": 0,
+        "ERROR": 0
+      },
+      "engine_checks": 54,
+      "environment": {
+        "python": "3.12.10",
+        "platform": "Darwin",
+        "machine": "arm64"
+      }
+    },
+    {
+      "job": "lab-ubuntu-24.04-py3.11",
+      "tests": 175,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "engine_summary": {
+        "PASS": 5,
+        "FAIL": 0,
+        "BLOCKED": 0,
+        "ERROR": 0
+      },
+      "engine_checks": 54,
+      "environment": {
+        "python": "3.11.18",
+        "platform": "Linux",
+        "machine": "x86_64"
+      }
+    },
+    {
+      "job": "lab-ubuntu-24.04-py3.12",
+      "tests": 175,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "engine_summary": {
+        "PASS": 5,
+        "FAIL": 0,
+        "BLOCKED": 0,
+        "ERROR": 0
+      },
+      "engine_checks": 54,
+      "environment": {
+        "python": "3.12.3",
+        "platform": "Linux",
+        "machine": "x86_64"
+      }
+    },
+    {
+      "job": "lab-ubuntu-24.04-py3.13",
+      "tests": 175,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "engine_summary": {
+        "PASS": 5,
+        "FAIL": 0,
+        "BLOCKED": 0,
+        "ERROR": 0
+      },
+      "engine_checks": 54,
+      "environment": {
+        "python": "3.13.18",
+        "platform": "Linux",
+        "machine": "x86_64"
+      }
+    },
+    {
+      "job": "lab-windows-latest-py3.12",
+      "tests": 175,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "engine_summary": {
+        "PASS": 5,
+        "FAIL": 0,
+        "BLOCKED": 0,
+        "ERROR": 0
+      },
+      "engine_checks": 54,
+      "environment": {
+        "python": "3.12.10",
+        "platform": "Windows",
+        "machine": "AMD64"
+      }
+    }
+  ],
+  "typescript": {
+    "tests_passed": 22,
+    "typecheck": "PASS",
+    "format_check": "PASS",
+    "production_npm_audit": "zero known advisories"
+  },
+  "container": {
+    "all_five_engines": "PASS",
+    "checks_passed": 54,
+    "nonroot_readonly_runtime": "PASS",
+    "http_state_and_packaged_assets": "PASS"
+  },
+  "scope": "Repeated cross-platform executions establish compatibility; they are not independent semantic-accuracy samples.",
+  "sdk_snapshot_sha256": "4da938e7c6db1acffd3d3098e2e9c0ae692d0741cd7f1ee413f171e856f662b8",
+  "record_type": "reference execution; rerun workflows for the current revision"
+}

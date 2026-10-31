@@ -1,0 +1,26 @@
+{
+  "name": "@eigenscope/integration-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript reference integration and SDK protocol-boundary tests",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "live": "node examples/live.ts",
+    "format": "prettier --write . ../src/eigenscope_lab/assets/web",
+    "format:check": "prettier --check . ../src/eigenscope_lab/assets/web"
+  },
+  "dependencies": {
+    "@eigenscope/sdk": "https://eigenscope.guardianai.network/npm/eigenscope-sdk-0.2.2.tgz"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,1628 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-10-30T23:46:12.379439+00:00",
+  "lab_version": "0.1.0",
+  "environment": {
+    "python": "3.12.13",
+    "platform": "Darwin",
+    "machine": "x86_64"
+  },
+  "mode": "local-external-simulators",
+  "seed": 7,
+  "summary": {
+    "PASS": 5,
+    "FAIL": 0,
+    "BLOCKED": 0,
+    "ERROR": 0
+  },
+  "suites": [
+    {
+      "suite": "provider",
+      "engine": "OpenAI Python client + loopback HTTP/SSE",
+      "engine_version": "2.54.0",
+      "seed": 7,
+      "checks": [
+        {
+          "name": "http_echo_preserves_unicode_and_symbols",
+          "passed": true
+        },
+        {
+          "name": "sse_reassembles_exact_text",
+          "passed": true
+        },
+        {
+          "name": "sse_finish_and_usage",
+          "passed": true
+        },
+        {
+          "name": "fragmented_tool_arguments",
+          "passed": true
+        },
+        {
+          "name": "rate_limit_exposes_retry_metadata",
+          "passed": true
+        },
+        {
+          "name": "malformed_sse_not_accepted_as_success",
+          "passed": true
+        },
+        {
+          "name": "truncated_stream_has_no_success_finish",
+          "passed": true
+        },
+        {
+          "name": "bounded_client_timeout",
+          "passed": true
+        },
+        {
+          "name": "stream_close_disconnects_upstream",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "http_requests": 8,
+        "observed_sse_chunks": 20,
+        "observed_sse_content_bytes": 66,
+        "observed_first_chunk_ms": 32.353,
+        "observed_finish_ms": 83.395,
+        "upstream_disconnect_observed": true,
+        "wall_ms": 2453.535
+      },
+      "scope": "Real local HTTP, SSE and client behavior; deterministic synthetic provider output, no hosted model call. Usage counts are UTF-8 byte fixtures, not tokenizer estimates.",
+      "status": "PASS"
+    },
+    {
+      "suite": "coding",
+      "engine": "Git worktree + Python unittest",
+      "engine_version": "git version 2.50.1 (Apple Git-155)",
+      "seed": 7,
+      "checks": [
+        {
+          "name": "baseline_test_exposes_real_bug",
+          "passed": true
+        },
+        {
+          "name": "path_escape_action_rejected",
+          "passed": true
+        },
+        {
+          "name": "stale_patch_rejected",
+          "passed": true
+        },
+        {
+          "name": "patched_worktree_passes_contract",
+          "passed": true
+        },
+        {
+          "name": "only_approved_source_changed",
+          "passed": true
+        },
+        {
+          "name": "original_checkout_unchanged",
+          "passed": true
+        },
+        {
+          "name": "original_tracked_files_clean",
+          "passed": true
+        },
+        {
+          "name": "worktree_cleanup",
+          "passed": true
+        },
+        {
+          "name": "temporary_repository_removed",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "wall_ms": 6170.504
+      },
+      "scope": "Actual Git branches/worktree, syntax validation and subprocess tests on source-owned synthetic code. A deterministic approved patch stands in for model reasoning; no IDE or vendor proxy is claimed.",
+      "status": "PASS"
+    },
+    {
+      "suite": "tools",
+      "engine": "Official MCP SDK subprocess/stdio",
+      "engine_version": "1.30.0",
+      "seed": 7,
+      "checks": [
+        {
+          "name": "stdio_handshake_and_tool_discovery",
+          "passed": true
+        },
+        {
+          "name": "real_tool_roundtrip",
+          "passed": true
+        },
+        {
+          "name": "untrusted_injection_fixture_reaches_boundary",
+          "passed": true
+        },
+        {
+          "name": "schema_rejects_unregistered_target",
+          "passed": true
+        },
+        {
+          "name": "schema_rejects_missing_required_argument",
+          "passed": true
+        },
+        {
+          "name": "unknown_execution_tool_rejected",
+          "passed": true
+        },
+        {
+          "name": "separate_server_process",
+          "passed": true
+        },
+        {
+          "name": "server_process_reaped_after_session",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "tool_calls": 5,
+        "transport": "stdio JSON-RPC",
+        "server_process_distinct": true,
+        "wall_ms": 4657.6
+      },
+      "scope": "Actual MCP handshake, discovery, schema validation, tool calls and subprocess cleanup. Injected text remains deliberately untrusted fixture data; no file-read, shell or network-exfiltration tool exists.",
+      "status": "PASS"
+    },
+    {
+      "suite": "telecom",
+      "engine": "SimPy discrete-event RAN contract model",
+      "engine_version": "4.1.2",
+      "seed": 7,
+      "checks": [
+        {
+          "name": "authorized_40mhz_allocation",
+          "passed": true
+        },
+        {
+          "name": "positive_real_packet_delivery",
+          "passed": true
+        },
+        {
+          "name": "normal_latency_budget",
+          "passed": true
+        },
+        {
+          "name": "normal_queue_has_headroom",
+          "passed": true
+        },
+        {
+          "name": "airtime_and_packet_conservation",
+          "passed": true
+        },
+        {
+          "name": "finite_queue_overload_drops",
+          "passed": true
+        },
+        {
+          "name": "bounded_queue_drained",
+          "passed": true
+        },
+        {
+          "name": "overload_preserves_ue_fairness",
+          "passed": true
+        },
+        {
+          "name": "reproducible_event_trace_metrics",
+          "passed": true
+        },
+        {
+          "name": "reject_nonfinite_bandwidth",
+          "passed": true
+        },
+        {
+          "name": "reject_boolean_bandwidth",
+          "passed": true
+        },
+        {
+          "name": "reject_unsupported_bandwidth",
+          "passed": true
+        },
+        {
+          "name": "reject_cross_slice_control",
+          "passed": true
+        },
+        {
+          "name": "reject_cell_overallocation",
+          "passed": true
+        },
+        {
+          "name": "reject_private_value_as_slice",
+          "passed": true
+        },
+        {
+          "name": "reject_unbounded_queue",
+          "passed": true
+        },
+        {
+          "name": "reject_nonfinite_traffic",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "normal": {
+          "seed": 7,
+          "bandwidth_mhz": 40,
+          "prbs": 106,
+          "slot_ms": 0.5,
+          "offered_mbps": 32.0,
+          "arrival_window_seconds": 1.0,
+          "observation_seconds": 1.193,
+          "nominal_air_capacity_mbps": 53.424,
+          "packets_arrived": 4056,
+          "packets_delivered": 4056,
+          "packets_dropped_queue": 0,
+          "packets_dropped_retry": 0,
+          "packets_still_queued": 0,
+          "tx_attempts": 4128,
+          "retry_attempts_scheduled": 72,
+          "transmitted_bits": 33024000,
+          "capacity_bits": 63734832.0,
+          "throughput_mbps": 27.198659,
+          "latency_p50_ms": 0.821569,
+          "latency_p95_ms": 1.534793,
+          "latency_min_ms": 0.500033,
+          "latency_max_ms": 2.97753,
+          "jain_fairness": 0.999075,
+          "per_ue_delivered": [
+            1049,
+            1038,
+            996,
+            973
+          ],
+          "max_queue_depths": [
+            6,
+            5,
+            7,
+            5
+          ],
+          "packet_conservation": true,
+          "airtime_conservation": true,
+          "telemetry_evidence": {
+            "frame_count": 119,
+            "sha256_of_canonical_frames": "31ea8920e805a53dec74afd5f58caae89f8112d927ac466759d41f7da8a2bade",
+            "samples": [
+              {
+                "index": 0,
+                "frame": {
+                  "suite": "telecom",
+                  "phase": "normal",
+                  "t_seconds": 0.01,
+                  "t_ms": 10.0,
+                  "queue_packets": 3,
+                  "per_ue_queue_packets": [
+                    1,
+                    0,
+                    0,
+                    2
+                  ],
+                  "served_packets": 38,
+                  "dropped_packets": 0,
+                  "throughput_mbps": 30.4,
+                  "allocated_prbs": 106,
+                  "bandwidth_mhz": 40,
+                  "capacity_mbps": 53.424
+                }
+              },
+              {
+                "index": 118,
+                "frame": {
+                  "suite": "telecom",
+                  "phase": "normal",
+                  "t_seconds": 1.19,
+                  "t_ms": 1190.0,
+                  "queue_packets": 0,
+                  "per_ue_queue_packets": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "served_packets": 4056,
+                  "dropped_packets": 0,
+                  "throughput_mbps": 0.0,
+                  "allocated_prbs": 106,
+                  "bandwidth_mhz": 40,
+                  "capacity_mbps": 53.424
+                }
+              }
+            ]
+          }
+        },
+        "overload": {
+          "seed": 7,
+          "bandwidth_mhz": 40,
+          "prbs": 106,
+          "slot_ms": 0.5,
+          "offered_mbps": 160,
+          "arrival_window_seconds": 1.0,
+          "observation_seconds": 1.193,
+          "nominal_air_capacity_mbps": 53.424,
+          "packets_arrived": 20174,
+          "packets_delivered": 5998,
+          "packets_dropped_queue": 14067,
+          "packets_dropped_retry": 109,
+          "packets_still_queued": 0,
+          "tx_attempts": 6131,
+          "retry_attempts_scheduled": 24,
+          "transmitted_bits": 49048000,
+          "capacity_bits": 63734832.0,
+          "throughput_mbps": 40.221291,
+          "latency_p50_ms": 21.740087,
+          "latency_p95_ms": 22.34338,
+          "latency_min_ms": 0.823297,
+          "latency_max_ms": 23.837206,
+          "jain_fairness": 0.999993,
+          "per_ue_delivered": [
+            1498,
+            1495,
+            1506,
+            1499
+          ],
+          "max_queue_depths": [
+            32,
+            32,
+            32,
+            32
+          ],
+          "packet_conservation": true,
+          "airtime_conservation": true,
+          "telemetry_evidence": {
+            "frame_count": 119,
+            "sha256_of_canonical_frames": "c54431a71bdbc0dc8d4ff2ab7757034633a77283ba58ce0a9fb005f41ae26bdc",
+            "samples": [
+              {
+                "index": 0,
+                "frame": {
+                  "suite": "telecom",
+                  "phase": "overload",
+                  "t_seconds": 0.01,
+                  "t_ms": 10.0,
+                  "queue_packets": 127,
+                  "per_ue_queue_packets": [
+                    32,
+                    32,
+                    32,
+                    31
+                  ],
+                  "served_packets": 51,
+                  "dropped_packets": 20,
+                  "throughput_mbps": 40.8,
+                  "allocated_prbs": 106,
+                  "bandwidth_mhz": 40,
+                  "capacity_mbps": 53.424
+                }
+              },
+              {
+                "index": 118,
+                "frame": {
+                  "suite": "telecom",
+                  "phase": "overload",
+                  "t_seconds": 1.19,
+                  "t_ms": 1190.0,
+                  "queue_packets": 0,
+                  "per_ue_queue_packets": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "served_packets": 5998,
+                  "dropped_packets": 14176,
+                  "throughput_mbps": 0.0,
+                  "allocated_prbs": 106,
+                  "bandwidth_mhz": 40,
+                  "capacity_mbps": 53.424
+                }
+              }
+            ]
+          }
+        }
+      },
+      "telemetry_evidence": {
+        "frame_count": 238,
+        "sha256_of_canonical_frames": "ac4418f18011ee5b6c3325caabf707da629637e4898e08da985643a62edd9a5c",
+        "samples": [
+          {
+            "index": 0,
+            "frame": {
+              "suite": "telecom",
+              "phase": "normal",
+              "t_seconds": 0.01,
+              "t_ms": 10.0,
+              "queue_packets": 3,
+              "per_ue_queue_packets": [
+                1,
+                0,
+                0,
+                2
+              ],
+              "served_packets": 38,
+              "dropped_packets": 0,
+              "throughput_mbps": 30.4,
+              "allocated_prbs": 106,
+              "bandwidth_mhz": 40,
+              "capacity_mbps": 53.424
+            }
+          },
+          {
+            "index": 119,
+            "frame": {
+              "suite": "telecom",
+              "phase": "overload",
+              "t_seconds": 0.01,
+              "t_ms": 10.0,
+              "queue_packets": 127,
+              "per_ue_queue_packets": [
+                32,
+                32,
+                32,
+                31
+              ],
+              "served_packets": 51,
+              "dropped_packets": 20,
+              "throughput_mbps": 40.8,
+              "allocated_prbs": 106,
+              "bandwidth_mhz": 40,
+              "capacity_mbps": 53.424
+            }
+          },
+          {
+            "index": 237,
+            "frame": {
+              "suite": "telecom",
+              "phase": "overload",
+              "t_seconds": 1.19,
+              "t_ms": 1190.0,
+              "queue_packets": 0,
+              "per_ue_queue_packets": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "served_packets": 5998,
+              "dropped_packets": 14176,
+              "throughput_mbps": 0.0,
+              "allocated_prbs": 106,
+              "bandwidth_mhz": 40,
+              "capacity_mbps": 53.424
+            }
+          }
+        ]
+      },
+      "scope": "Actual SimPy queues/events with an idealized FR1 slot scheduler and local slice authorization. No RF, E2AP, RIC, 5GC registration or live subscriber network is simulated by this tier; use the separate upstream 5GC profile for protocol-stack integration.",
+      "status": "PASS"
+    },
+    {
+      "suite": "robotics",
+      "engine": "MuJoCo native CPU dynamics + geometric ray casting",
+      "engine_version": "3.3.7",
+      "seed": 7,
+      "checks": [
+        {
+          "name": "clear_route_reaches_goal",
+          "passed": true
+        },
+        {
+          "name": "real_dynamics_moves_chassis",
+          "passed": true
+        },
+        {
+          "name": "velocity_within_configured_limit",
+          "passed": true
+        },
+        {
+          "name": "seeded_rollout_reproducible",
+          "passed": true
+        },
+        {
+          "name": "obstacle_activates_safety_stop",
+          "passed": true
+        },
+        {
+          "name": "safety_stop_prevents_contact",
+          "passed": true
+        },
+        {
+          "name": "blocked_goal_not_reported_reached",
+          "passed": true
+        },
+        {
+          "name": "unmonitored_physics_control_contacts_wall",
+          "passed": true
+        },
+        {
+          "name": "goal_cannot_override_safety",
+          "passed": true
+        },
+        {
+          "name": "stale_range_source_stops_motion",
+          "passed": true
+        },
+        {
+          "name": "ocr_override_rejected",
+          "passed": true
+        }
+      ],
+      "telemetry_evidence": {
+        "frame_count": 804,
+        "sha256_of_canonical_frames": "d82c284878f88564069b503512092d2a7c79b768e38a6871029f5eb1b140e85e",
+        "samples": [
+          {
+            "index": 0,
+            "frame": {
+              "frame": 0,
+              "phase": "clear-route",
+              "t": 0.005,
+              "x": 2.8e-05,
+              "y": 2.8e-05,
+              "yaw": -0.006821,
+              "range_m": 3.0,
+              "sensor_t": 0.0,
+              "speed_mps": 0.007871,
+              "safety_stop": false,
+              "stop_reason": "NONE",
+              "contacts": 0,
+              "goal_x": 0.8,
+              "goal_y": 0.8,
+              "obstacle": null
+            }
+          },
+          {
+            "index": 201,
+            "frame": {
+              "frame": 0,
+              "phase": "obstacle-stop",
+              "t": 0.005,
+              "x": 3.7e-05,
+              "y": 0.0,
+              "yaw": -0.007045,
+              "range_m": 1.35,
+              "sensor_t": 0.0,
+              "speed_mps": 0.007496,
+              "safety_stop": false,
+              "stop_reason": "NONE",
+              "contacts": 0,
+              "goal_x": 2.4,
+              "goal_y": 0.0,
+              "obstacle": {
+                "x": 1.4,
+                "y": 0.0,
+                "half_x": 0.05,
+                "half_y": 0.6
+              }
+            }
+          },
+          {
+            "index": 402,
+            "frame": {
+              "frame": 0,
+              "phase": "physics-control",
+              "t": 0.005,
+              "x": 3.7e-05,
+              "y": 0.0,
+              "yaw": -0.007045,
+              "range_m": 1.35,
+              "sensor_t": 0.0,
+              "speed_mps": 0.007496,
+              "safety_stop": false,
+              "stop_reason": "NONE",
+              "contacts": 0,
+              "goal_x": 2.4,
+              "goal_y": 0.0,
+              "obstacle": {
+                "x": 1.4,
+                "y": 0.0,
+                "half_x": 0.05,
+                "half_y": 0.6
+              }
+            }
+          },
+          {
+            "index": 603,
+            "frame": {
+              "frame": 0,
+              "phase": "sensor-loss",
+              "t": 0.005,
+              "x": 3.7e-05,
+              "y": 0.0,
+              "yaw": -0.007045,
+              "range_m": 1.35,
+              "sensor_t": 0.0,
+              "speed_mps": 0.007496,
+              "safety_stop": false,
+              "stop_reason": "NONE",
+              "contacts": 0,
+              "goal_x": 2.4,
+              "goal_y": 0.0,
+              "obstacle": {
+                "x": 1.4,
+                "y": 0.0,
+                "half_x": 0.05,
+                "half_y": 0.6
+              }
+            }
+          },
+          {
+            "index": 803,
+            "frame": {
+              "frame": 200,
+              "phase": "sensor-loss",
+              "t": 10.0,
+              "x": 0.262297,
+              "y": 0.0,
+              "yaw": -0.0,
+              "range_m": 1.249387,
+              "sensor_t": 0.45,
+              "speed_mps": 0.0,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT",
+              "contacts": 0,
+              "goal_x": 2.4,
+              "goal_y": 0.0,
+              "obstacle": {
+                "x": 1.4,
+                "y": 0.0,
+                "half_x": 0.05,
+                "half_y": 0.6
+              }
+            }
+          }
+        ]
+      },
+      "metrics": {
+        "clear_route": {
+          "goal": {
+            "pose": {
+              "header": {
+                "frame_id": "map",
+                "stamp": {
+                  "sec": 0,
+                  "nanosec": 0
+                }
+              },
+              "pose": {
+                "position": {
+                  "x": 0.8,
+                  "y": 0.8,
+                  "z": 0.0
+                },
+                "orientation": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0,
+                  "w": 1.0
+                }
+              }
+            },
+            "behavior_tree": ""
+          },
+          "simulation_time_s": 10.0,
+          "physics_steps": 2000,
+          "control_hz": 200,
+          "range_sensor_hz": 20,
+          "range_samples": 200,
+          "reached": true,
+          "distance_remaining_m": 0.013889,
+          "final_position_m": [
+            0.809821,
+            0.809821
+          ],
+          "travelled_m": 1.14526,
+          "max_speed_mps": 0.437393,
+          "minimum_lidar_range_m": 3.0,
+          "obstacle_contact_samples": 0,
+          "safety_stop_latched": false,
+          "stop_reason": "NONE",
+          "trace": [
+            {
+              "time_s": 0.005,
+              "x_m": 2.8e-05,
+              "y_m": 2.8e-05,
+              "speed_mps": 0.007871,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 0.505,
+              "x_m": 0.085292,
+              "y_m": 0.085292,
+              "speed_mps": 0.367574,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 1.005,
+              "x_m": 0.228673,
+              "y_m": 0.228673,
+              "speed_mps": 0.426119,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 1.505,
+              "x_m": 0.381514,
+              "y_m": 0.381514,
+              "speed_mps": 0.435648,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 2.005,
+              "x_m": 0.535894,
+              "y_m": 0.535894,
+              "speed_mps": 0.437199,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 2.505,
+              "x_m": 0.687764,
+              "y_m": 0.687764,
+              "speed_mps": 0.388236,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 3.005,
+              "x_m": 0.782772,
+              "y_m": 0.782772,
+              "speed_mps": 0.140165,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 3.505,
+              "x_m": 0.805418,
+              "y_m": 0.805418,
+              "speed_mps": 0.022813,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 4.005,
+              "x_m": 0.809104,
+              "y_m": 0.809104,
+              "speed_mps": 0.003713,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 4.505,
+              "x_m": 0.809704,
+              "y_m": 0.809704,
+              "speed_mps": 0.000604,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 5.005,
+              "x_m": 0.809802,
+              "y_m": 0.809802,
+              "speed_mps": 9.8e-05,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 5.505,
+              "x_m": 0.809818,
+              "y_m": 0.809818,
+              "speed_mps": 1.6e-05,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 6.005,
+              "x_m": 0.80982,
+              "y_m": 0.80982,
+              "speed_mps": 3e-06,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 6.505,
+              "x_m": 0.809821,
+              "y_m": 0.809821,
+              "speed_mps": 0.0,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 7.005,
+              "x_m": 0.809821,
+              "y_m": 0.809821,
+              "speed_mps": 0.0,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 7.505,
+              "x_m": 0.809821,
+              "y_m": 0.809821,
+              "speed_mps": 0.0,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 8.005,
+              "x_m": 0.809821,
+              "y_m": 0.809821,
+              "speed_mps": 0.0,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 8.505,
+              "x_m": 0.809821,
+              "y_m": 0.809821,
+              "speed_mps": 0.0,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 9.005,
+              "x_m": 0.809821,
+              "y_m": 0.809821,
+              "speed_mps": 0.0,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 9.505,
+              "x_m": 0.809821,
+              "y_m": 0.809821,
+              "speed_mps": 0.0,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 10.0,
+              "x_m": 0.809821,
+              "y_m": 0.809821,
+              "speed_mps": 0.0,
+              "lidar_min_m": 3.0,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            }
+          ],
+          "state_digest": "f9d08999abb226d289cbd30f89a7d2f796149cf39c1b1971ac020f8e34e62166"
+        },
+        "obstacle_stop": {
+          "goal": {
+            "pose": {
+              "header": {
+                "frame_id": "map",
+                "stamp": {
+                  "sec": 0,
+                  "nanosec": 0
+                }
+              },
+              "pose": {
+                "position": {
+                  "x": 2.4,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "orientation": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0,
+                  "w": 1.0
+                }
+              }
+            },
+            "behavior_tree": ""
+          },
+          "simulation_time_s": 10.0,
+          "physics_steps": 2000,
+          "control_hz": 200,
+          "range_sensor_hz": 20,
+          "range_samples": 200,
+          "reached": false,
+          "distance_remaining_m": 1.41578,
+          "final_position_m": [
+            0.98422,
+            -0.0
+          ],
+          "travelled_m": 0.98422,
+          "max_speed_mps": 0.437376,
+          "minimum_lidar_range_m": 0.36578,
+          "obstacle_contact_samples": 0,
+          "safety_stop_latched": true,
+          "stop_reason": "OBSTACLE",
+          "trace": [
+            {
+              "time_s": 0.005,
+              "x_m": 3.7e-05,
+              "y_m": 0.0,
+              "speed_mps": 0.007496,
+              "lidar_min_m": 1.35,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 0.505,
+              "x_m": 0.12045,
+              "y_m": 0.0,
+              "speed_mps": 0.367453,
+              "lidar_min_m": 1.231387,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 1.005,
+              "x_m": 0.323195,
+              "y_m": -0.0,
+              "speed_mps": 0.426099,
+              "lidar_min_m": 1.028936,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 1.505,
+              "x_m": 0.53934,
+              "y_m": -0.0,
+              "speed_mps": 0.435644,
+              "lidar_min_m": 0.812839,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 2.005,
+              "x_m": 0.757666,
+              "y_m": -0.0,
+              "speed_mps": 0.437198,
+              "lidar_min_m": 0.59452,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 2.505,
+              "x_m": 0.93691,
+              "y_m": -0.0,
+              "speed_mps": 0.173348,
+              "lidar_min_m": 0.413956,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 3.005,
+              "x_m": 0.97652,
+              "y_m": -0.0,
+              "speed_mps": 0.028214,
+              "lidar_min_m": 0.373621,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 3.505,
+              "x_m": 0.982967,
+              "y_m": -0.0,
+              "speed_mps": 0.004592,
+              "lidar_min_m": 0.367056,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 4.005,
+              "x_m": 0.984016,
+              "y_m": -0.0,
+              "speed_mps": 0.000747,
+              "lidar_min_m": 0.365988,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 4.505,
+              "x_m": 0.984187,
+              "y_m": -0.0,
+              "speed_mps": 0.000122,
+              "lidar_min_m": 0.365814,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 5.005,
+              "x_m": 0.984214,
+              "y_m": -0.0,
+              "speed_mps": 2e-05,
+              "lidar_min_m": 0.365786,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 5.505,
+              "x_m": 0.984219,
+              "y_m": -0.0,
+              "speed_mps": 3e-06,
+              "lidar_min_m": 0.365781,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 6.005,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 1e-06,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 6.505,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 7.005,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 7.505,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 8.005,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 8.505,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 9.005,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 9.505,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            },
+            {
+              "time_s": 10.0,
+              "x_m": 0.98422,
+              "y_m": -0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.36578,
+              "safety_stop": true,
+              "stop_reason": "OBSTACLE"
+            }
+          ],
+          "state_digest": "e0595df3b0e01a902a42a4185964ccdc27bc568ffe4dae600ffb04d741976a4a"
+        },
+        "contact_control": {
+          "goal": {
+            "pose": {
+              "header": {
+                "frame_id": "map",
+                "stamp": {
+                  "sec": 0,
+                  "nanosec": 0
+                }
+              },
+              "pose": {
+                "position": {
+                  "x": 2.4,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "orientation": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0,
+                  "w": 1.0
+                }
+              }
+            },
+            "behavior_tree": ""
+          },
+          "simulation_time_s": 10.0,
+          "physics_steps": 2000,
+          "control_hz": 200,
+          "range_sensor_hz": 20,
+          "range_samples": 200,
+          "reached": false,
+          "distance_remaining_m": 1.229997,
+          "final_position_m": [
+            1.170003,
+            -1.3e-05
+          ],
+          "travelled_m": 1.172044,
+          "max_speed_mps": 0.43749,
+          "minimum_lidar_range_m": 0.178977,
+          "obstacle_contact_samples": 5640,
+          "safety_stop_latched": false,
+          "stop_reason": "NONE",
+          "trace": [
+            {
+              "time_s": 0.005,
+              "x_m": 3.7e-05,
+              "y_m": 0.0,
+              "speed_mps": 0.007496,
+              "lidar_min_m": 1.35,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 0.505,
+              "x_m": 0.12045,
+              "y_m": 0.0,
+              "speed_mps": 0.367453,
+              "lidar_min_m": 1.231387,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 1.005,
+              "x_m": 0.323195,
+              "y_m": -0.0,
+              "speed_mps": 0.426099,
+              "lidar_min_m": 1.028936,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 1.505,
+              "x_m": 0.53934,
+              "y_m": -0.0,
+              "speed_mps": 0.435644,
+              "lidar_min_m": 0.812839,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 2.005,
+              "x_m": 0.757666,
+              "y_m": -0.0,
+              "speed_mps": 0.437198,
+              "lidar_min_m": 0.59452,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 2.505,
+              "x_m": 0.976347,
+              "y_m": -0.0,
+              "speed_mps": 0.437451,
+              "lidar_min_m": 0.375841,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 3.005,
+              "x_m": 1.170117,
+              "y_m": -1.2e-05,
+              "speed_mps": 0.003061,
+              "lidar_min_m": 0.179867,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 3.505,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 4.005,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 4.505,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 5.005,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 5.505,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 6.005,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 6.505,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 7.005,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 7.505,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 8.005,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 8.505,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 9.005,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 9.505,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 10.0,
+              "x_m": 1.170003,
+              "y_m": -1.3e-05,
+              "speed_mps": 0.0,
+              "lidar_min_m": 0.179997,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            }
+          ],
+          "state_digest": "02aeea6dac8386a6448d5b7b01505fb13d2e22c26e3486d4af99f575368d7c98"
+        },
+        "sensor_loss": {
+          "goal": {
+            "pose": {
+              "header": {
+                "frame_id": "map",
+                "stamp": {
+                  "sec": 0,
+                  "nanosec": 0
+                }
+              },
+              "pose": {
+                "position": {
+                  "x": 2.4,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "orientation": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0,
+                  "w": 1.0
+                }
+              }
+            },
+            "behavior_tree": ""
+          },
+          "simulation_time_s": 10.0,
+          "physics_steps": 2000,
+          "control_hz": 200,
+          "range_sensor_hz": 20,
+          "range_samples": 10,
+          "reached": false,
+          "distance_remaining_m": 2.137703,
+          "final_position_m": [
+            0.262297,
+            0.0
+          ],
+          "travelled_m": 0.262297,
+          "max_speed_mps": 0.387889,
+          "minimum_lidar_range_m": 1.249387,
+          "obstacle_contact_samples": 0,
+          "safety_stop_latched": true,
+          "stop_reason": "SENSOR_TIMEOUT",
+          "trace": [
+            {
+              "time_s": 0.005,
+              "x_m": 3.7e-05,
+              "y_m": 0.0,
+              "speed_mps": 0.007496,
+              "lidar_min_m": 1.35,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 0.505,
+              "x_m": 0.12045,
+              "y_m": 0.0,
+              "speed_mps": 0.367453,
+              "lidar_min_m": 1.249387,
+              "safety_stop": false,
+              "stop_reason": "NONE"
+            },
+            {
+              "time_s": 1.005,
+              "x_m": 0.23797,
+              "y_m": 0.0,
+              "speed_mps": 0.089137,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 1.505,
+              "x_m": 0.258337,
+              "y_m": 0.0,
+              "speed_mps": 0.014508,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 2.005,
+              "x_m": 0.261652,
+              "y_m": 0.0,
+              "speed_mps": 0.002361,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 2.505,
+              "x_m": 0.262192,
+              "y_m": 0.0,
+              "speed_mps": 0.000384,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 3.005,
+              "x_m": 0.26228,
+              "y_m": 0.0,
+              "speed_mps": 6.3e-05,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 3.505,
+              "x_m": 0.262294,
+              "y_m": 0.0,
+              "speed_mps": 1e-05,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 4.005,
+              "x_m": 0.262296,
+              "y_m": 0.0,
+              "speed_mps": 2e-06,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 4.505,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 5.005,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 5.505,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 6.005,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 6.505,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 7.005,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 7.505,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 8.005,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 8.505,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 9.005,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 9.505,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            },
+            {
+              "time_s": 10.0,
+              "x_m": 0.262297,
+              "y_m": 0.0,
+              "speed_mps": 0.0,
+              "lidar_min_m": 1.249387,
+              "safety_stop": true,
+              "stop_reason": "SENSOR_TIMEOUT"
+            }
+          ],
+          "state_digest": "59dad2022eca9da2f2e24916f7bd10d6bc12b7112914cd9b8eda7539c162c790"
+        }
+      },
+      "scope": "Original planar holonomic AMR model; real headless physics, force-control and ray casting. Nav2-shaped goal validation; no ROS2/DDS runtime, learned VLA, certified safety scanner or physical robot.",
+      "status": "PASS"
+    }
+  ]
+}

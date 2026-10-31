@@ -1,0 +1,29 @@
+# The lab owns this build recipe. UERANSIM source remains AGPL-3.0 and its
+# license is retained in the runtime image. All identifiers below are public.
+FROM ubuntu@sha256:8a2321a92b438238f93b4346fff61bc4259c99fdd4d9b52ee86f153fee0c344f AS builder
+ARG UERANSIM_COMMIT=6bf5a1a96aaef6ae8778b9d8b477ac6e2bbf8156
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates cmake g++ git libsctp-dev libssl-dev make \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+RUN git init UERANSIM && cd UERANSIM \
+    && git remote add origin https://github.com/aligungr/UERANSIM.git \
+    && git fetch --depth 1 origin "${UERANSIM_COMMIT}" \
+    && git checkout --detach FETCH_HEAD \
+    && test "$(git rev-parse HEAD)" = "${UERANSIM_COMMIT}" \
+    && make -j2
+
+FROM ubuntu@sha256:8a2321a92b438238f93b4346fff61bc4259c99fdd4d9b52ee86f153fee0c344f
+LABEL org.opencontainers.image.source="https://github.com/aligungr/UERANSIM" \
+      org.opencontainers.image.revision="6bf5a1a96aaef6ae8778b9d8b477ac6e2bbf8156" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
+      org.opencontainers.image.version="3.3.0"
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    iproute2 iptables iputils-ping libsctp1 net-tools \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /src/UERANSIM/build /UERANSIM/build
+COPY --from=builder /src/UERANSIM/config /UERANSIM/config
+COPY --from=builder /src/UERANSIM/LICENSE /usr/share/licenses/UERANSIM/LICENSE
+WORKDIR /UERANSIM/build
+# The pinned configuration checkout supplies this BSD-licensed launcher.
+CMD ["bash", "/mnt/ueransim/ueransim_image_init.sh"]

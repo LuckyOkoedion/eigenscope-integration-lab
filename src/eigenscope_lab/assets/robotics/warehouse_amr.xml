@@ -1,0 +1,34 @@
+<mujoco model="eigenscope_warehouse_amr">
+  <!-- Original fixture: planar holonomic AMR, SI units, no third-party robot mesh. -->
+  <compiler angle="radian"/>
+  <option timestep="0.005" gravity="0 0 0" integrator="implicitfast"/>
+  <default>
+    <joint damping="1"/>
+    <geom friction="0.8 0.01 0.001" solref="0.01 1"/>
+    <motor ctrllimited="true" ctrlrange="-15 15"/>
+  </default>
+  <worldbody>
+    <light pos="0 0 4"/>
+    <geom name="floor" type="plane" size="4 4 .1" rgba=".92 .94 .96 1" contype="0" conaffinity="0"/>
+    <geom name="obstacle" type="box" pos="1.4 0 .2" size=".05 .6 .2" rgba=".85 .3 .22 1"/>
+    <body name="amr" pos="0 0 .18">
+      <joint name="map_x" type="slide" axis="1 0 0"/>
+      <joint name="map_y" type="slide" axis="0 1 0"/>
+      <joint name="yaw" type="hinge" axis="0 0 1" damping=".5"/>
+      <geom name="chassis" type="box" size=".18 .14 .08" mass="10" rgba=".04 .48 .4 1"/>
+      <site name="base_link" pos="0 0 0" size=".015"/>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="force_x" joint="map_x"/>
+    <motor name="force_y" joint="map_y"/>
+    <motor name="torque_z" joint="yaw" ctrlrange="-2 2"/>
+  </actuator>
+  <sensor>
+    <jointpos name="odom_x" joint="map_x"/>
+    <jointpos name="odom_y" joint="map_y"/>
+    <jointvel name="velocity_x" joint="map_x"/>
+    <jointvel name="velocity_y" joint="map_y"/>
+    <framequat name="orientation" objtype="body" objname="amr"/>
+  </sensor>
+</mujoco>

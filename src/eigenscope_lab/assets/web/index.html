@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>EigenScope Integration Lab</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to simulation</a>
+    <header class="topbar">
+      <a class="brand" href="/"
+        ><span class="brand-mark">E</span
+        ><span>EigenScope <span class="brand-light">Integration Lab</span></span></a
+      >
+      <div class="top-actions">
+        <span class="local-label"><span class="dot"></span>Local workspace</span
+        ><button id="theme" class="quiet" type="button">Dark mode</button>
+      </div>
+    </header>
+    <div class="shell">
+      <aside class="sidebar">
+        <button
+          id="menu-toggle"
+          class="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="scenario-menu"
+        >
+          ☰ Scenarios
+        </button>
+        <div id="scenario-menu" class="scenario-menu">
+          <p class="eyebrow">EXPLORE THE CONTRACT</p>
+          <nav aria-label="Industry scenarios">
+            <button class="scenario" type="button" data-scenario="robotics" aria-pressed="true">
+              <span class="scenario-icon">01</span
+              ><span><strong>Robotics</strong><small>Motion · sensing · safety</small></span>
+            </button>
+            <button class="scenario" type="button" data-scenario="telecom" aria-pressed="false">
+              <span class="scenario-icon">02</span
+              ><span><strong>Telecom</strong><small>Queues · capacity · overload</small></span>
+            </button>
+            <button class="scenario" type="button" data-scenario="provider" aria-pressed="false">
+              <span class="scenario-icon">03</span
+              ><span
+                ><strong>Model provider</strong><small>HTTP · streaming · failures</small></span
+              >
+            </button>
+            <button class="scenario" type="button" data-scenario="tools" aria-pressed="false">
+              <span class="scenario-icon">04</span
+              ><span><strong>MCP tools</strong><small>Discovery · untrusted output</small></span>
+            </button>
+            <button class="scenario" type="button" data-scenario="coding" aria-pressed="false">
+              <span class="scenario-icon">05</span
+              ><span
+                ><strong>Coding workflow</strong><small>Worktrees · tests · cleanup</small></span
+              >
+            </button>
+          </nav>
+          <div class="sidebar-note">
+            <strong>Your industry boundary, visible.</strong>
+            <p>Run a seeded scenario, inspect actual engine telemetry, and verify its checks.</p>
+          </div>
+          <a
+            class="source-link"
+            href="https://github.com/LuckyOkoedion/eigenscope-integration-lab"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Source &amp; setup on GitHub ↗</a
+          >
+        </div>
+      </aside>
+      <main id="workspace" tabindex="-1">
+        <div class="page-heading">
+          <div>
+            <p id="engine-name" class="eyebrow">MUJOCO PHYSICS</p>
+            <h1 id="title">Robotics</h1>
+            <p id="description" class="description">
+              Watch a mobile robot navigate, stop for obstacles, and respond to sensor loss.
+            </p>
+          </div>
+          <span id="run-status" class="status" role="status">Ready</span>
+        </div>
+        <section class="controls panel" aria-label="Run controls">
+          <div class="control-fields">
+            <label
+              >Seed<input
+                id="seed"
+                type="number"
+                min="0"
+                max="4294967295"
+                step="1"
+                value="7" /></label
+            ><label
+              >Visual pacing<select id="pacing">
+                <option value="0">Engine speed</option>
+                <option value="15" selected>15 ms per frame</option>
+                <option value="50">50 ms per frame</option>
+                <option value="100">100 ms per frame</option>
+              </select></label
+            >
+          </div>
+          <div class="control-actions">
+            <button id="start" class="primary" type="button">Run robotics</button
+            ><button id="cancel" class="secondary" type="button" disabled>Stop</button
+            ><button id="reset" class="quiet" type="button">Reset view</button>
+          </div>
+        </section>
+        <p id="feedback" class="feedback" role="alert" hidden></p>
+        <section class="stage panel" aria-labelledby="stage-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="stage-title">Live engine telemetry</h2>
+              <p id="phase">Choose Run to begin.</p>
+            </div>
+            <span id="connection" class="connection">Connecting…</span>
+          </div>
+          <canvas
+            id="scene"
+            width="1080"
+            height="500"
+            role="img"
+            aria-label="Simulation workspace. Run a scenario to view actual engine data."
+          ></canvas>
+          <div class="stage-caption">
+            <span id="scope">Actual engine state · Synthetic scenario</span
+            ><span id="frame-count">0 frames received</span>
+          </div>
+          <div id="provider-output" class="provider-output" hidden>
+            <p>Observed synthetic response</p>
+            <output id="provider-text"></output>
+            <p id="provider-note" class="provider-note" hidden></p>
+          </div>
+        </section>
+        <section id="metrics" class="metrics" aria-label="Latest measurements"></section>
+        <div class="detail-grid">
+          <section class="panel checks-panel" aria-labelledby="checks-title">
+            <div class="section-heading">
+              <h2 id="checks-title">Contract checks</h2>
+              <span id="check-count" class="subtle">Awaiting run</span>
+            </div>
+            <p id="check-empty" class="empty-text">
+              Results appear as the real scenario completes its checks.
+            </p>
+            <ol id="checks" class="check-list"></ol>
+            <button id="download" class="quiet" type="button" hidden>Download run report</button>
+          </section>
+          <section class="panel" aria-labelledby="activity-title">
+            <div class="section-heading">
+              <h2 id="activity-title">Activity</h2>
+              <span id="elapsed" class="subtle">—</span>
+            </div>
+            <ol id="activity" class="activity-list">
+              <li>Local simulators are ready. No API credentials are needed.</li>
+            </ol>
+            <details class="telemetry">
+              <summary>Inspect latest telemetry</summary>
+              <pre id="telemetry">No frame received.</pre>
+            </details>
+          </section>
+        </div>
+        <section class="panel history-panel" aria-labelledby="history-title">
+          <div class="section-heading">
+            <h2 id="history-title">Recent runs</h2>
+            <span class="subtle">This server session</span>
+          </div>
+          <ol id="history" class="history-list">
+            <li class="empty-text">Your completed and stopped runs will appear here.</li>
+          </ol>
+        </section>
+        <footer>
+          <p>
+            Visuals follow real simulator callbacks. Pacing adds wall-clock delay between frames;
+            the simulation clock remains explicit.
+          </p>
+          <p>For authenticated EigenScope SDK/API tests, use the documented CLI live mode.</p>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

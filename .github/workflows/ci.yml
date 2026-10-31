@@ -1,0 +1,115 @@
+name: Lab checks
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '*.md']
+  pull_request:
+    paths-ignore: ['docs/**', '*.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, python: '3.11'}
+          - {os: ubuntu-24.04, python: '3.12'}
+          - {os: ubuntu-24.04, python: '3.13'}
+          - {os: macos-15, python: '3.12'}
+          - {os: windows-latest, python: '3.12'}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: '0.13.6'
+          enable-cache: true
+      - run: uv sync --locked --all-extras --python ${{ matrix.python }}
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync ruff format --check .
+      - run: uv run --no-sync pytest --junitxml=results/junit.xml
+      - run: uv run --no-sync eigenscope-lab run all --output results/local.json
+      - run: uv build
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: lab-${{ matrix.os }}-py${{ matrix.python }}
+          path: results/
+          retention-days: 14
+  typescript:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm audit --omit=dev --audit-level=high
+  container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: docker build --tag eigenscope-lab-ci .
+      - name: Execute actual engines under container restrictions
+        run: |
+          mkdir -p results
+          docker run --rm --read-only --tmpfs /tmp:rw,size=256m,mode=1777 --cap-drop ALL --security-opt no-new-privileges:true --pids-limit 128 --memory 768m eigenscope-lab-ci run all > results/container.json
+      - name: Start the non-root dashboard
+        run: docker run -d --name eigenscope-lab-dashboard --read-only --tmpfs /tmp:rw,size=256m,mode=1777 --cap-drop ALL --security-opt no-new-privileges:true --pids-limit 128 --memory 768m -p 127.0.0.1:8765:8765 eigenscope-lab-ci
+      - name: Verify HTTP state and packaged assets
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request
+          client=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+          for attempt in range(30):
+              try:
+                  with client.open('http://127.0.0.1:8765/api/state',timeout=2) as response:
+                      data=json.load(response)
+                  assert data['status']=='idle'
+                  break
+              except (OSError,ValueError):
+                  if attempt==29:raise
+                  time.sleep(0.5)
+          for path,expected in [('/','EigenScope Integration Lab'),('/app.js','renderState'),('/style.css','--bg')]:
+              with client.open('http://127.0.0.1:8765'+path,timeout=2) as response:
+                  assert expected in response.read().decode()
+          PY
+      - name: Remove only this dashboard container
+        if: always()
+        run: |
+          if docker container inspect eigenscope-lab-dashboard >/dev/null 2>&1; then
+            docker rm -f eigenscope-lab-dashboard
+          fi
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: container-engine-results
+          path: results/container.json
+          retention-days: 14

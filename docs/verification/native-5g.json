@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "tier": "actual-open5gs-ueransim",
+  "checks": {
+    "ue_status_command_succeeded": true,
+    "ue_registered": true,
+    "ue_tunnel_address_assigned": true,
+    "user_plane_ping_via_tunnel": true,
+    "user_plane_zero_packet_loss": true
+  },
+  "environment": {
+    "docker_server": "28.0.4",
+    "os": "linux",
+    "architecture": "x86_64",
+    "kernel_version": "7.0.0-1017-azure",
+    "locked_mongodb_version": "7.0.45",
+    "cpus": 4,
+    "memory_gib": 15.61,
+    "compose": "2.38.2",
+    "context": "current (unchanged)"
+  },
+  "versions": {
+    "open5gs": "2.8.0-48-gf87da61",
+    "ueransim": "3.2.6",
+    "mongodb": "7.0.45"
+  },
+  "images": {
+    "open5gs": "ghcr.io/herlesupreeth/docker_open5gs@sha256:a71a99c68d3b0a609cd0e686009cf90d8431e1fd23ee31613226c294fd906747",
+    "ueransim": "ghcr.io/herlesupreeth/docker_ueransim@sha256:676fe0a7511b43d5d1e06e379ba0eec2258f294b81505ee5ac02b2a09020e6e0",
+    "mongo": "docker.io/library/mongo@sha256:e634fcaae4d0915b365fb88c076dd33c851ed61a611c7ee9816aba6d6b5159cd"
+  },
+  "configuration_commit": "ff41a305959d1d7bd75c4ca935d5a8edc70d965a",
+  "synthetic_ue": {
+    "interface": "uesimtun0",
+    "ipv4": "10.251.0.2",
+    "rm_state": "RM-REGISTERED",
+    "cli_exit_code": 0
+  },
+  "ping": {
+    "transmitted": 3,
+    "received": 3,
+    "loss_percent": 0.0,
+    "rtt_ms": {
+      "min": 0.631,
+      "mean": 0.727,
+      "max": 0.876,
+      "mdev": 0.106
+    },
+    "measurement": "Three synthetic UE-to-UPF ICMP packets through the actual GTP-U tunnel."
+  },
+  "cleanup": {
+    "status": "PASS",
+    "removed_only_project": "eigenscope-lab-5gc"
+  },
+  "scope": "Actual NGAP/NAS registration and GTP-U tunnel traffic in an internal Docker network. UERANSIM uses a simulated radio interface; no RF, E2AP/RIC or commercial subscriber is exercised.",
+  "record_type": "reference execution; rerun workflows for the current revision"
+}
