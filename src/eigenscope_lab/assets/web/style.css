@@ -282,6 +282,18 @@ h1 {
   color: var(--accent);
   border-color: var(--accent);
 }
+.status[data-status="completed"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.run-guidance {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: -7px 2px 18px;
+  overflow-wrap: anywhere;
+}
 .status[data-status="failed"] {
   background: var(--danger-soft);
   color: var(--danger);

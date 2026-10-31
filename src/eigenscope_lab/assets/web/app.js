@@ -32,7 +32,7 @@ const definitions = {
     title: "Coding workflow",
     engine: "Git worktrees · Python unittest",
     description:
-      "Observe a real failing contract, an isolated patch, passing tests and worktree cleanup.",
+      "Follow a failing test, an isolated code fix, passing tests and workspace cleanup.",
     scope: "Actual Git operations and bounded Python test commands",
   },
 };
@@ -94,8 +94,8 @@ function updateMetrics() {
   if (!frame) {
     metrics([
       ["Simulation clock", "—", "Begins with the engine"],
-      ["Frames", "0", "Actual callback samples"],
-      ["Contract checks", "—", "Awaiting a run"],
+      ["Frames", "0", "Collected during the run"],
+      ["Scenario checks", "—", "Awaiting a run"],
       ["Seed", $("seed").value, "Reproducible input"],
     ]);
   } else if (selected === "robotics") {
@@ -135,8 +135,8 @@ function updateMetrics() {
     metrics([
       ["Completed checks", String(frame.completed_checks ?? "—"), "Real transport / process work"],
       ["Latest check", frame.passed ? "Passed" : "Failed", words(frame.phase)],
-      ["Frames", String(state.frames_received || trace.length), "Actual callback samples"],
-      ["Seed", String(state.seed ?? 7), "Deterministic fixtures"],
+      ["Frames", String(state.frames_received || trace.length), "Collected during the run"],
+      ["Seed", String(state.seed ?? 7), "Repeatable sample conditions"],
     ]);
   }
 }
@@ -157,13 +157,16 @@ function selectScenario(name) {
   $("engine-name").textContent = definition.engine;
   $("scope").textContent = definition.scope;
   $("start").textContent = `Run ${definition.title.toLowerCase()}`;
+  $("menu-toggle").textContent = `☰ Scenarios: ${definition.title}`;
   document
     .querySelectorAll("[data-scenario]")
     .forEach((button) =>
       button.setAttribute("aria-pressed", String(button.dataset.scenario === name)),
     );
+  const menuWasOpen = $("scenario-menu").classList.contains("open");
   $("scenario-menu").classList.remove("open");
   $("menu-toggle").setAttribute("aria-expanded", "false");
+  if (menuWasOpen) $("menu-toggle").focus();
   if (state.scenario !== name) {
     frame = null;
     trace = [];
@@ -188,6 +191,9 @@ function selectScenario(name) {
     $("check-empty").hidden = false;
     $("download").hidden = true;
     $("frame-count").textContent = "0 frames received";
+    $("reset").disabled = true;
+    $("run-guidance").textContent =
+      `Select Run ${definition.title.toLowerCase()} to begin. Sample data is included; no API key is needed.`;
     showError("");
   }
   updateMetrics();
@@ -250,7 +256,10 @@ function renderState(next) {
   $("start").disabled = busy;
   $("cancel").disabled = !busy || state.status === "cancelling";
   $("cancel").textContent = state.status === "cancelling" ? "Stopping…" : "Stop";
-  $("reset").disabled = busy;
+  $("reset").disabled = busy || state.status === "idle";
+  $("start").textContent = ["completed", "cancelled", "failed"].includes(state.status)
+    ? "Run again"
+    : `Run ${definitions[selected].title.toLowerCase()}`;
   $("seed").disabled = busy;
   $("pacing").disabled = busy;
   document.querySelectorAll("[data-scenario]").forEach((button) => {
@@ -261,7 +270,7 @@ function renderState(next) {
     running: "Running",
     cancelling: "Stopping",
     cancelled: "Stopped",
-    completed: "Completed",
+    completed: "Passed",
     failed: "Needs attention",
   };
   $("run-status").textContent = labels[state.status] || "Ready";
@@ -280,6 +289,24 @@ function renderState(next) {
     $("telemetry").textContent = "No frame received.";
   }
   const checks = state.result?.checks || [];
+  const passedCount = checks.filter((check) => check.passed).length;
+  const guidance = {
+    idle: `Select Run ${definitions[selected].title.toLowerCase()} to begin. Sample data is included; no API key is needed.`,
+    running:
+      "Running locally. Stop ends the run at the next checkpoint and cleans up its resources.",
+    cancelling: "Stopping… waiting for the current operation and cleanup to finish.",
+    cancelled: "Run stopped. Select Run again to complete all scenario checks.",
+    completed: `All ${checks.length} checks passed. Review the results below or download the run report.`,
+    failed: checks.length
+      ? `${checks.length - passedCount} of ${checks.length} checks need attention. Review the results below or download the report.`
+      : "The run could not finish. Check the error message and local terminal, then try again.",
+  };
+  $("run-guidance").textContent = guidance[state.status] || guidance.idle;
+  $("check-empty").textContent = busy
+    ? "Checks will appear when the run finishes."
+    : state.status === "cancelled"
+      ? "This run stopped before its checks finished. Run again to see complete results."
+      : "Run this scenario to see which checks pass and which need attention.";
   $("check-empty").hidden = checks.length > 0;
   $("check-count").textContent = checks.length
     ? `${checks.filter((c) => c.passed).length} / ${checks.length} passed`
@@ -356,6 +383,13 @@ document
 $("menu-toggle").addEventListener("click", () => {
   const open = $("scenario-menu").classList.toggle("open");
   $("menu-toggle").setAttribute("aria-expanded", String(open));
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && $("scenario-menu").classList.contains("open")) {
+    $("scenario-menu").classList.remove("open");
+    $("menu-toggle").setAttribute("aria-expanded", "false");
+    $("menu-toggle").focus();
+  }
 });
 let theme =
   localStorage.getItem("eigenscope-lab-theme") ||

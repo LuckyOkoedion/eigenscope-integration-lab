@@ -32,7 +32,7 @@
           ☰ Scenarios
         </button>
         <div id="scenario-menu" class="scenario-menu">
-          <p class="eyebrow">EXPLORE THE CONTRACT</p>
+          <p class="eyebrow">CHOOSE A SCENARIO</p>
           <nav aria-label="Industry scenarios">
             <button class="scenario" type="button" data-scenario="robotics" aria-pressed="true">
               <span class="scenario-icon">01</span
@@ -60,8 +60,8 @@
             </button>
           </nav>
           <div class="sidebar-note">
-            <strong>Your industry boundary, visible.</strong>
-            <p>Run a seeded scenario, inspect actual engine telemetry, and verify its checks.</p>
+            <strong>See each system in action.</strong>
+            <p>Choose a scenario and select Run. Sample data is included; no API key is needed.</p>
           </div>
           <a
             class="source-link"
@@ -94,9 +94,12 @@
                 step="1"
                 value="7" /></label
             ><label
-              >Visual pacing<select id="pacing">
-                <option value="0">Engine speed</option>
-                <option value="15" selected>15 ms per frame</option>
+              >Playback pace<select
+                id="pacing"
+                title="Adds display delay without changing simulated time."
+              >
+                <option value="0">Fastest</option>
+                <option value="15" selected>Standard · 15 ms/frame</option>
                 <option value="50">50 ms per frame</option>
                 <option value="100">100 ms per frame</option>
               </select></label
@@ -108,11 +111,14 @@
             ><button id="reset" class="quiet" type="button">Reset view</button>
           </div>
         </section>
+        <p id="run-guidance" class="run-guidance">
+          Select Run robotics to begin. Everything runs locally with sample data.
+        </p>
         <p id="feedback" class="feedback" role="alert" hidden></p>
         <section class="stage panel" aria-labelledby="stage-title">
           <div class="section-heading">
             <div>
-              <h2 id="stage-title">Live engine telemetry</h2>
+              <h2 id="stage-title">Simulation view</h2>
               <p id="phase">Choose Run to begin.</p>
             </div>
             <span id="connection" class="connection">Connecting…</span>
@@ -138,11 +144,11 @@
         <div class="detail-grid">
           <section class="panel checks-panel" aria-labelledby="checks-title">
             <div class="section-heading">
-              <h2 id="checks-title">Contract checks</h2>
+              <h2 id="checks-title">Scenario checks</h2>
               <span id="check-count" class="subtle">Awaiting run</span>
             </div>
             <p id="check-empty" class="empty-text">
-              Results appear as the real scenario completes its checks.
+              Run this scenario to see which checks pass and which need attention.
             </p>
             <ol id="checks" class="check-list"></ol>
             <button id="download" class="quiet" type="button" hidden>Download run report</button>
@@ -156,7 +162,7 @@
               <li>Local simulators are ready. No API credentials are needed.</li>
             </ol>
             <details class="telemetry">
-              <summary>Inspect latest telemetry</summary>
+              <summary>Inspect latest data</summary>
               <pre id="telemetry">No frame received.</pre>
             </details>
           </section>
@@ -172,8 +178,8 @@
         </section>
         <footer>
           <p>
-            Visuals follow real simulator callbacks. Pacing adds wall-clock delay between frames;
-            the simulation clock remains explicit.
+            The view follows measurements from the running simulator. Playback pace adds display
+            delay; simulation time and elapsed wall time are shown separately.
           </p>
           <p>For authenticated EigenScope SDK/API tests, use the documented CLI live mode.</p>
         </footer>
