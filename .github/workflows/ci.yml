@@ -43,7 +43,7 @@ jobs:
       - run: uv run --no-sync pytest --junitxml=results/junit.xml
       - run: uv run --no-sync eigenscope-lab run all --output results/local.json
       - run: uv build
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: lab-${{ matrix.os }}-py${{ matrix.python }}
@@ -107,7 +107,7 @@ jobs:
           if docker container inspect eigenscope-lab-dashboard >/dev/null 2>&1; then
             docker rm -f eigenscope-lab-dashboard
           fi
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: container-engine-results
