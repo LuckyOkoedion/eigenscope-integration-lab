@@ -1,0 +1,46 @@
+name: Model inference checks
+
+on:
+  pull_request:
+    paths:
+      - 'src/eigenscope_lab/model_*.py'
+      - 'src/eigenscope_lab/cli.py'
+      - 'tests/test_model_*.py'
+      - 'requirements-model-inference.txt'
+      - '.github/workflows/model-engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: model-engine-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: '0.13.6'
+      - name: Install the isolated CPU inference environment
+        run: |
+          uv venv --python 3.12 .venv-models
+          uv pip install --python .venv-models/bin/python 'torch>=2.6,<3' --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --python .venv-models/bin/python -r requirements-model-inference.txt 'pytest>=8.4,<10' 'pytest-timeout>=2.4,<3'
+      - name: Execute real neural inference and orchestration controls
+        env:
+          PYTHONPATH: src
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          TOKENIZERS_PARALLELISM: 'false'
+          HF_HUB_DISABLE_TELEMETRY: '1'
+          HF_HUB_OFFLINE: '1'
+        run: |
+          .venv-models/bin/python -m pytest tests/test_model_engine.py tests/test_model_integration.py tests/test_model_cli.py tests/test_model_e2e.py -q -p no:cacheprovider
+          .venv-models/bin/python -m eigenscope_lab.cli models --engine-smoke --repeat 5 --warmup 1 --output results/model-engine.json

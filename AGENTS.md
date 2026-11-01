@@ -30,6 +30,7 @@ For TypeScript or dashboard assets, run `npm ci --ignore-scripts`, `npm test`, `
 
 - `src/eigenscope_lab/simulators/`: engine adapters and local protocol fixtures.
 - `src/eigenscope_lab/fixtures.py` and `live.py`: published inputs and real SDK/API workflows.
+- `model_integration.py` and `model_engine.py`: optional automatic-profile lifecycle checks, real causal inference and latency comparisons; see [model integration](docs/model-integration.md).
 - `runner.py`, `reporting.py`, `cli.py`: scenario registration, result schema and commands.
 - `web.py` and `assets/web/`: loopback HTTP/SSE service and dashboard.
 - `tests/` and `typescript/test/`: executable contracts, failure controls and lifecycle checks.

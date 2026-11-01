@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "id": "model-a",
+      "reference": "/path/to/model-a",
+      "prompt": "The integration laboratory is",
+      "max_new_tokens": 8
+    },
+    {
+      "id": "model-b",
+      "reference": "/path/to/model-b",
+      "prompt": "The integration laboratory is",
+      "max_new_tokens": 8
+    }
+  ]
+}

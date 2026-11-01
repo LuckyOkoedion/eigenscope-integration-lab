@@ -2,7 +2,7 @@
 
 [![Lab checks](https://github.com/LuckyOkoedion/eigenscope-integration-lab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LuckyOkoedion/eigenscope-integration-lab/actions/workflows/ci.yml)
 
-An open-source companion to [EigenScope](https://eigenscope.guardianai.network/) for developers exploring its semantic-firewall and circuit-inspection workflow. Run industry scenarios on your workstation, watch real simulator telemetry, and connect the official SDK to your EigenScope deployment when you are ready to test an integration.
+An open-source companion to [EigenScope](https://eigenscope.guardianai.network/) for AI application developers, model providers and enterprise AI platform teams. Run industry scenarios, watch real simulator telemetry, connect the official SDK to your deployment, and validate model-runtime integration and inference latency.
 
 [Explore EigenScope](https://eigenscope.guardianai.network/) · [Product guide](https://eigenscope.guardianai.network/guide/agent-firewall) · [Live SDK/API setup](docs/live-testing.md) · [Contributing](CONTRIBUTING.md)
 
@@ -13,6 +13,7 @@ An open-source companion to [EigenScope](https://eigenscope.guardianai.network/)
 | Understand EigenScope and its use cases | Open the [workbench](https://eigenscope.guardianai.network/) and [product guide](https://eigenscope.guardianai.network/guide/agent-firewall) |
 | Try the examples without an account or API key | [Run the local lab](#run-the-local-lab) and open its dashboard |
 | Evaluate an SDK integration with your service | [Connect to EigenScope](#connect-to-eigenscope) using your authorized API access |
+| Test automatic model profiles and inference latency | Follow the [model integration guide](docs/model-integration.md) with your checkpoints and SDK connector |
 | Discuss a tailored deployment or industry pilot | Visit [Sponsored R&D](https://eigenscope.guardianai.network/?view=view-partnerships) or [contact Guardian AI](https://guardianai.network/contact) |
 
 ## Run the local lab
@@ -84,6 +85,12 @@ For exact-answer and explicitly private-context coverage beyond the sample workf
 ```sh
 uv run --frozen eigenscope-lab live --case challenges --output results/challenges.json
 ```
+
+## Validate model-runtime integration
+
+For teams operating their own models, the [model matrix runner](docs/model-integration.md) exercises real causal-model inference, automatic profile preparation and reuse through the SDK connector, and baseline versus integrated generation latency. Select your checkpoints, connect your deployment and inspect independent activation checks alongside p50/p95/p99 measurements.
+
+Follow the guide to install the separate model environment, run the local GPT-2/Llama engine checks, and connect your actual models. Model-inference dependencies stay out of the normal industry-scenario setup; private profiles stay in your protected runtime or private cache.
 
 ## Read the results
 
