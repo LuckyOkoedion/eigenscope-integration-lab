@@ -461,10 +461,30 @@ def run_live(
         raise ValueError(
             "Configure ORTHOCORE_API_KEY with an authorized API key; its value is never printed"
         )
-    if case_id not in {"all", "workbench", *(case.id for case in CASES)}:
+    challenge_selections = {"challenges", "challenge-tasks", "challenge-privacy"}
+    if case_id not in {"all", "workbench", *challenge_selections, *(case.id for case in CASES)}:
         raise ValueError(
-            "Unknown case; choose all, workbench, coding, tool-injection, telecom, robotics, oil-gas, email or unicode"
+            "Unknown case; choose all, workbench, challenges, challenge-tasks, challenge-privacy, "
+            "coding, tool-injection, telecom, robotics, oil-gas, email or unicode"
         )
+    if case_id in challenge_selections:
+        from .challenges import run_challenges
+
+        result = report(
+            run_challenges(
+                base_url=base_url, key=key, selection=case_id, repeat=repeat, timeout=timeout
+            ),
+            "actual-service-semantic-challenges",
+            seed,
+        )
+        result["measurement_boundaries"] = {
+            "http_and_cleanup_wall_ms": "Workbench HTTP/full body plus cleanup, without a simulated answer.",
+            "sdk_and_cleanup_wall_ms": "Official SDK decompose plus owned-ticket cleanup, including network and validation.",
+            "warmups": 0,
+            "concurrency": 1,
+            "repeat_applies_to": "All selected challenge cases; fixed synthetic inputs.",
+        }
+        return result
     try:
         import httpx
         from eigenscope_sdk import EigenScopeClient

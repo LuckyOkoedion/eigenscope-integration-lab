@@ -42,6 +42,22 @@ uv run --frozen eigenscope-lab live --repeat 3 --timeout 15 --output results/rep
 
 Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `email` and `unicode`. Requests run sequentially. Repeat applies to SDK cases, is capped at ten and leaves the workbench controls as a single pass.
 
+## Exact-answer and private-context challenges
+
+Use the opt-in challenge group to test beyond the sample workflows:
+
+```sh
+uv run --frozen eigenscope-lab live --case challenges --output results/challenges.json
+uv run --frozen eigenscope-lab live --case challenge-tasks --output results/task-challenges.json
+uv run --frozen eigenscope-lab live --case challenge-privacy --output results/privacy-challenges.json
+```
+
+The 18 published synthetic cases in `src/eigenscope_lab/challenges.py` contain nine independent exact-answer expectations and nine private-context checks. Tasks cover decimals, unit conversion, ranges, literal output, structured JSON and conditional logic. The actual workbench answer is compared with the fixed expected result; no echo provider supplies the answer. JSON answers reject duplicate keys, extra keys and wrong value types.
+
+Private-context cases call the official SDK and require a nonempty protected core, absence of explicitly private references and preservation of the `45 ms` task constraint. They include multilingual context, coordinates, spaced addresses, arbitrary identifiers and NFC/NFD aliases. An empty/error response cannot pass the absence check. Mapping handles stay in memory, and cleanup covers only handles created by that invocation.
+
+`all` retains its existing 16-suite sample set; challenges run only when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. No live calls are made by the local dashboard or unit tests.
+
 Timings identify SDK, local-provider and complete-workflow boundaries. SDK wall time includes serialization, network requests, service execution and response validation. Reports record the sample count; compare runs using the same client, configuration and environment.
 
 ## TypeScript
