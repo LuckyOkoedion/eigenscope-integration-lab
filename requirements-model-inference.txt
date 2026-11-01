@@ -1,0 +1,4 @@
+# Install in the dedicated model-inference environment described in docs/model-integration.md.
+torch>=2.6,<3
+transformers>=4.51,<5
+safetensors>=0.5,<1
