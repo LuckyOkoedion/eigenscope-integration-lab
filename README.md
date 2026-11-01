@@ -79,6 +79,12 @@ Live testing submits the lab's published synthetic cases. It checks outbound con
 
 TypeScript users can follow the [TypeScript quickstart](typescript/README.md), which includes installation, tests, explicit credential binding and the live command.
 
+For exact-answer and explicitly private-context coverage beyond the sample workflows, run the optional [18-case challenge group](docs/live-testing.md#exact-answer-and-private-context-challenges):
+
+```sh
+uv run --frozen eigenscope-lab live --case challenges --output results/challenges.json
+```
+
 ## Read the results
 
 Commands emit versioned JSON containing individual checks, dependency versions, seeds and measurements. Exit codes are **0 PASS**, **1 FAIL**, **2 BLOCKED/configuration**, and **3 test-runner ERROR**.
