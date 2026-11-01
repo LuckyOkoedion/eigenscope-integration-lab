@@ -62,6 +62,28 @@ def main(argv: list[str] | None = None) -> int:
     live.add_argument("--repeat", type=int, default=1, choices=range(1, 11), metavar="1..10")
     live.add_argument("--case", default="all", help="Case ID or all; see docs/live-testing.md")
     live.add_argument("--timeout", type=float, default=15.0)
+    models = sub.add_parser(
+        "models", help="Test automatic model/profile setup and actual inference latency"
+    )
+    model_source = models.add_mutually_exclusive_group(required=True)
+    model_source.add_argument(
+        "--matrix", help="Versioned JSON matrix of local or pinned checkpoints"
+    )
+    model_source.add_argument(
+        "--engine-smoke",
+        action="store_true",
+        help="Run local GPT-2/Llama inference machinery without SDK calls",
+    )
+    models.add_argument("--connector", help="Installed SDK adapter in package.module:function form")
+    models.add_argument("--allow-downloads", action="store_true")
+    models.add_argument("--device", default="cpu")
+    models.add_argument("--repeat", type=int, default=3)
+    models.add_argument("--warmup", type=int, default=1)
+    models.add_argument("--seed", type=int, default=7)
+    models.add_argument("--output")
+    models.add_argument("--max-projection-p95-ms", type=float)
+    models.add_argument("--max-wall-overhead-pct", type=float)
+    models.add_argument("--max-ttft-overhead-pct", type=float)
     args = parser.parse_args(argv)
     if hasattr(args, "seed") and not 0 <= args.seed <= 4294967295:
         parser.error("seed must be between 0 and 4294967295")
@@ -119,6 +141,47 @@ def main(argv: list[str] | None = None) -> int:
             ),
             args.output,
         )
+    if args.command == "models":
+        from .model_integration import (
+            load_connector,
+            load_matrix,
+            run_engine_smoke,
+            run_model_matrix,
+        )
+
+        budgets = {
+            name: getattr(args, name)
+            for name in ("max_projection_p95_ms", "max_wall_overhead_pct", "max_ttft_overhead_pct")
+            if getattr(args, name) is not None
+        }
+        if args.engine_smoke and (args.connector or budgets or args.allow_downloads):
+            parser.error(
+                "engine smoke uses local models without a connector or integration budgets"
+            )
+        try:
+            if args.engine_smoke:
+                result = run_engine_smoke(
+                    repeat=args.repeat, warmup=args.warmup, seed=args.seed, device=args.device
+                )
+            else:
+                connector = load_connector(args.connector) if args.connector else None
+                result = run_model_matrix(
+                    load_matrix(args.matrix),
+                    connector=connector,
+                    repeat=args.repeat,
+                    warmup=args.warmup,
+                    seed=args.seed,
+                    device=args.device,
+                    allow_downloads=args.allow_downloads,
+                    budgets=budgets,
+                )
+        except Exception:
+            parser.exit(
+                2,
+                "Model tests could not start. Check the matrix, connector and inference "
+                "environment; see docs/model-integration.md.\n",
+            )
+        return _emit(result, args.output)
     try:
         from .live import run_live
 
