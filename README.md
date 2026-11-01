@@ -80,6 +80,12 @@ Live testing submits the lab's published synthetic cases. It checks outbound con
 
 TypeScript users can follow the [TypeScript quickstart](typescript/README.md), which includes installation, tests, explicit credential binding and the live command.
 
+For exact-answer and explicitly private-context coverage beyond the sample workflows, run the optional [18-case challenge group](docs/live-testing.md#exact-answer-and-private-context-challenges):
+
+```sh
+uv run --frozen eigenscope-lab live --case challenges --output results/challenges.json
+```
+
 ## Validate model-runtime integration
 
 For teams operating their own models, the [model matrix runner](docs/model-integration.md) exercises real causal-model inference, automatic profile preparation and reuse through the SDK connector, and baseline versus integrated generation latency. Select your checkpoints, connect your deployment and inspect independent activation checks alongside p50/p95/p99 measurements.
