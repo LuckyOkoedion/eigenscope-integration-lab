@@ -2,7 +2,7 @@
 
 Run actual causal-model inference before and after attaching EigenScope. The model runner checks automatic profile detection, fresh preparation, cached preparation, projection activity and generation latency across a model matrix.
 
-Start with [EigenScope Integrations](https://eigenscope.guardianai.network/?view=view-sdk) for your SDK and protected-runtime setup. Use the [package registry](https://eigenscope.guardianai.network/registry) for the distribution matching your deployment. For an additional model or custom checkpoint, visit [Sponsored R&D](https://eigenscope.guardianai.network/?view=view-partnerships).
+Start with [Model Providers & Enterprise AI Platforms](https://eigenscope.guardianai.network/guide/model-platforms) and [EigenScope Integrations](https://eigenscope.guardianai.network/integrations#model-connection). The [official package registry](https://eigenscope.guardianai.network/registry) supplies the SDK. Use [provider engineering](https://eigenscope.guardianai.network/sponsored-rd?vertical=MODEL_PROVIDERS_ENTERPRISE_AI&usecase=model-platforms) for additional architectures, custom checkpoints, inference engines, hardware integration and private deployments.
 
 ## Install the model runner
 
@@ -21,7 +21,55 @@ On Intel macOS, use a supported Linux CPU environment for current PyTorch packag
 
 The engine smoke command runs genuine small GPT-2 and Llama models initialized locally, with no model download or EigenScope credential. Its report uses `mode: model-engine-smoke` and `eigenscope_projection_tested: false`. Passing engine checks return exit code 0. Use your actual checkpoints and connector for EigenScope profile and projection results.
 
-Install your deployment's official SDK and connector into this environment using its documented package source. Keep credentials in the environment or your secret manager. The lab does not place credentials in a matrix or pass them on the command line.
+## Install the official SDK and prepare the protected runtime
+
+SDK **0.2.5** ships both `eigenscope_sdk.connect_model` and the lab adapter
+`eigenscope_sdk.lab_connector:connect`. Install its immutable official wheel:
+
+```sh
+uv pip install --python .venv-models/bin/python \
+  'https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl#sha256=ac5485b605244ba513e0e99c9f7b2eb04f5499e7c08ff505803cc8afdf14d061'
+```
+
+The deployment operator prepares the authorized Linux model environment once.
+Use the protected operator kit supplied for that deployment, outside this
+checkout. It includes `bootstrap_model_hook_runtime.py`, the authorized runtime
+wheel, its `SHA256SUMS`, and `BOOTSTRAP.txt`. The separately provisioned signed
+profile catalog and profile key stay in protected backend storage.
+
+Run the kit's actual bootstrap with paths and the reviewed wheel digest supplied
+by your operator. The shell variables below identify those protected files;
+they contain no key values:
+
+```sh
+.venv-models/bin/python -B "$EIGENSCOPE_OPERATOR_KIT/bootstrap_model_hook_runtime.py" \
+  --wheel "$EIGENSCOPE_RUNTIME_WHEEL" \
+  --expected-wheel-sha256 "$EIGENSCOPE_RUNTIME_SHA256" \
+  --catalog "$EIGENSCOPE_PROFILE_CATALOG" \
+  --profile-key-file "$EIGENSCOPE_PROFILE_KEY_FILE" \
+  --env-output "$EIGENSCOPE_RUNTIME_ENV"
+
+. "$EIGENSCOPE_RUNTIME_ENV"
+```
+
+The bootstrap verifies Linux permissions and memory-lock limits, checks the
+prepared framework versions, installs the hash-checked runtime wheel and
+authenticates the provisioned profiles. `observed-runtime-versions.json` records
+the kit's environment; use your operator's dependency installation plan to
+prepare it. Model identity is then checked when the application connects its
+loaded model.
+
+The prepared checkpoint combinations are:
+
+| Checkpoint | Precision | Attention implementation |
+| --- | --- | --- |
+| `google/gemma-2-2b` | `bfloat16` | `eager` |
+| `EleutherAI/pythia-70m` | `float32` | `sdpa` |
+
+Use the exact checkpoint revision and framework environment supplied with its
+matching profile. Keep tokenizer/preprocessing assets paired with that checkpoint.
+For another precision, attention implementation, adapter or device, use the
+[provider engineering route](https://eigenscope.guardianai.network/sponsored-rd?vertical=MODEL_PROVIDERS_ENTERPRISE_AI&usecase=model-platforms).
 
 ## Choose your model matrix
 
@@ -34,6 +82,22 @@ cp examples/model-matrix.example.json results/model-matrix.json
 Replace the two placeholder paths with local causal-model checkpoints. Include at least two architecture families when evaluating support across models. Use short synthetic prompts and labels that you are comfortable including in a report.
 
 Each model has an `id`, a `reference`, an optional local `revision`, a `prompt` and a bounded `max_new_tokens`. For a Hugging Face repository reference, provide its immutable 40-character commit revision. Branch names such as `main` are unsuitable for repeatable comparisons. Local checkpoints are fingerprinted from their model assets.
+
+Set an optional per-model `dtype` to `auto`, `float32`, `float16` or `bfloat16`
+when selecting checkpoint precision. For example, add `"dtype": "bfloat16"` to
+a model entry when that checkpoint, device and matching runtime profile support
+BF16. `auto` uses the checkpoint's framework precision selection. Omitting the
+field preserves the framework's normal loading behavior. Baseline, identity and
+protected inference use the same loaded model; the report records its actual
+precision with each inference measurement and checks that it remains unchanged.
+
+An optional per-model `attn_implementation` selects `eager` or `sdpa` through
+Transformers' maintained model loader. Omit it to preserve the framework's normal
+selection. Use the implementation supported by the checkpoint and its matching
+runtime profile. The report records the loaded framework attention implementation
+and checks that baseline, identity and protected measurements keep the same one.
+For example, a model entry may contain both `"dtype": "bfloat16"` and
+`"attn_implementation": "eager"` when that is its supported deployment combination.
 
 Connector maintainers can use the public helper to obtain the same local-checkpoint identity:
 
@@ -50,11 +114,11 @@ Model loading uses the local cache by default. Add `--allow-downloads` to permit
 ```sh
 .venv-models/bin/eigenscope-lab models \
   --matrix results/model-matrix.json \
-  --connector your_connector:connect \
+  --connector eigenscope_sdk.lab_connector:connect \
   --repeat 5 \
   --warmup 1 \
   --device cpu \
-  --output results/models.json
+  --output results/model-release-validation.json
 ```
 
 Use `cuda` or `mps` when supported by your installed PyTorch build and hardware. Compare results on the same device, model precision, prompt, token count and software versions.
@@ -63,18 +127,31 @@ A matrix accepts up to eight models. `--repeat` accepts 1–100 measured runs, `
 
 ## Connect the actual SDK
 
-The lab's connector is a small adapter around your SDK's automatic model-connection API. SDK maintainers should ship this connector in the SDK package so developers can select the provided callable directly. This keeps the runner compatible with SDK releases without guessing method names or hardcoding Gemma, a layer number or an SAE dictionary. The connector performs the real SDK/runtime calls; it must not substitute a local projection simulator.
-
-Pass an installed Python callable as `--connector package.module:connect`. Importing that module executes its Python code, so use a connector you maintain or trust. Its callable contract is:
+Your application passes its already loaded model to the official SDK once:
 
 ```python
-def connect(model, *, cache_dir, refresh):
-    # Invoke your SDK's automatic connection API for this loaded model.
-    # Return a session implementing the contract below.
-    ...
+from eigenscope_sdk import connect_model
+
+with connect_model(model) as connection:
+    outputs = model(**inputs)
+    print(connection.observations())
 ```
 
-The lab supplies the loaded model object, a new private temporary cache directory and the preparation mode. It does not supply a model ID, selected hook, basis files or profile ID. The directory is outside the checkout, is owner-only and is removed after the run. Keep protected profile files inside the runtime or this private cache, according to your deployment's design.
+Keep the normal inference call used by your serving application. Connection
+setup automatically resolves the matching model/profile identity, authenticates
+the profile, warms its device hook and attaches it. Projection runs in-process
+on that model's device. Use `connection.set_protection(False)` for an explicit
+baseline control, `connection.set_protection(True)` to restore protection, and
+`connection.close()` for cleanup. The context manager closes it automatically.
+
+For the release-validation command above, the packaged lab adapter supplies the
+following session contract. It calls this same SDK connection API and maps the
+runtime's actual preparation events and completed projection measurements.
+
+The lab supplies the loaded model object, a new private temporary cache directory
+and the preparation mode. The SDK resolves the model ID, selected hook and profile
+automatically. The directory is outside the checkout, is owner-only and is removed
+after the run. Keep protected profile files in the runtime or this private cache.
 
 The first connection uses `refresh=True` to exercise preparation in an empty cache. The lab closes that session and connects again with the same cache and `refresh=False` to exercise reuse.
 
@@ -100,7 +177,9 @@ signature_verified: true only after the runtime verifies its profile
 events: detected, cache_miss or cache_hit, verified, loaded
 ```
 
-Map the SDK's actual metadata to this contract. The connector reports signature verification and preparation events from the runtime's real behavior. The lab checks the receipt's consistency with the loaded model and observed lifecycle; signature verification itself is performed by the SDK/runtime that owns the protected assets.
+The official adapter maps the SDK's actual metadata to this contract. Signature
+verification and preparation events come from the runtime's completed behavior.
+The lab checks the receipt against the loaded model and observed lifecycle.
 
 `snapshot()` returns cumulative `hook_calls`, `projected_calls`, `changed_calls` and `provision_count` integers, plus a `projection_ms` list of finite nonnegative measurements. Advance `changed_calls` only when the projected activation actually differs from its input. Include only completed projection durations. Do not include activations, prompts, profile contents, paths, credentials or raw network responses.
 
@@ -119,6 +198,12 @@ For each model, the runner executes:
 The default Transformers engine adds temporary observers before and after the attached instance forward hooks. It checks that identity controls preserve activations, protected controls change them, and tensor shapes, dtypes, devices and values remain valid. Activation values stay in memory. Observers are removed before timed runs, including after a failed probe. These native probes support Tensor, tuple and list outputs; pre-hook and fused execution backends can provide an engine observation adapter. The report identifies native observations separately from connector counters.
 
 Both fresh and cached sessions are validated. The reported integrated generation and projection percentiles use the cached session; preparation reports fresh and cached durations separately. Warmups are separate from timed samples. Inference must use the already prepared profile: a provisioning event during measured generation fails the lifecycle check. Missing prerequisites remain `BLOCKED`; a rejected expectation remains `FAIL`. Without a connector, a successful baseline can pass while its integration suite remains `BLOCKED`.
+
+For the two-model example, a successful release-validation report contains four
+passing suites: baseline and integration for each checkpoint. Review the named
+checks and preserve failed results alongside the run's SDK, framework, precision
+and attention versions. This report is written to the ignored
+`results/model-release-validation.json` file.
 
 For task and privacy effectiveness, pair this matrix with held-out, independently scored prompts for your domain. Record expected answers, private spans and permitted output before running them. An activation changing establishes intervention; task preservation and private-information handling require their own output checks. Use [the live SDK/API tests](live-testing.md) for text protection and owned-mapping lifecycle contracts.
 

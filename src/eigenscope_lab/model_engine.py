@@ -96,10 +96,20 @@ class TransformersEngine:
         device: str = "cpu",
         allow_downloads: bool = False,
         seed: int = 7,
+        dtype: str | None = None,
+        attn_implementation: str | None = None,
     ) -> None:
         local = _validate_reference(reference, revision)
         if type(allow_downloads) is not bool:
             raise ValueError("allow_downloads must be a boolean")
+        if dtype is not None and (
+            not isinstance(dtype, str) or dtype not in {"auto", "float32", "float16", "bfloat16"}
+        ):
+            raise ValueError("dtype must be auto, float32, float16 or bfloat16")
+        if attn_implementation is not None and (
+            not isinstance(attn_implementation, str) or attn_implementation not in {"eager", "sdpa"}
+        ):
+            raise ValueError("attn_implementation must be eager or sdpa")
         if type(seed) is not int or not 0 <= seed <= 4294967295:
             raise ValueError("seed must be an unsigned 32-bit integer")
         if not isinstance(device, str) or not _DEVICE.fullmatch(device):
@@ -132,8 +142,13 @@ class TransformersEngine:
         source = str(local) if local else reference
         try:
             self._tokenizer = transformers.AutoTokenizer.from_pretrained(source, **options)
+            model_options = dict(options)
+            if dtype is not None:
+                model_options["torch_dtype"] = "auto" if dtype == "auto" else getattr(torch, dtype)
+            if attn_implementation is not None:
+                model_options["attn_implementation"] = attn_implementation
             self.model = transformers.AutoModelForCausalLM.from_pretrained(
-                source, use_safetensors=True, **options
+                source, use_safetensors=True, **model_options
             )
             self.model.to(self._device)
             self.model.eval()
@@ -314,6 +329,7 @@ class TransformersEngine:
         wall_ms = (time.perf_counter() - started) * 1000
         if not math.isfinite(wall_ms) or wall_ms <= 0:
             raise RuntimeError("The model benchmark clock produced an invalid duration")
+        observed_attention = getattr(self.model.config, "_attn_implementation", None)
         return {
             "token_ids": tuple(tokens),
             "wall_ms": wall_ms,
@@ -324,6 +340,13 @@ class TransformersEngine:
             "dtype": str(self.model.dtype).removeprefix("torch."),
             "device": str(self.model.device),
             "provenance": self.provenance,
+            **(
+                {"attn_implementation": observed_attention}
+                if isinstance(observed_attention, str)
+                and observed_attention
+                in {"eager", "sdpa", "flash_attention_2", "flash_attention_3", "flex_attention"}
+                else {}
+            ),
         }
 
     def close(self) -> None:

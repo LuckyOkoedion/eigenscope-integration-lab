@@ -4,7 +4,7 @@
 
 An open-source companion to [EigenScope](https://eigenscope.guardianai.network/) for AI application developers, model providers and enterprise AI platform teams. Run industry scenarios, watch real simulator telemetry, connect the official SDK to your deployment, and validate model-runtime integration and inference latency.
 
-[Explore EigenScope](https://eigenscope.guardianai.network/) · [Product guide](https://eigenscope.guardianai.network/guide/agent-firewall) · [Live SDK/API setup](docs/live-testing.md) · [Contributing](CONTRIBUTING.md)
+[Explore EigenScope](https://eigenscope.guardianai.network/) · [Application guide](https://eigenscope.guardianai.network/guide/coding) · [Model platforms](https://eigenscope.guardianai.network/guide/model-platforms) · [Live SDK/API setup](docs/live-testing.md) · [Contributing](CONTRIBUTING.md)
 
 ## Start here
 
@@ -14,7 +14,7 @@ An open-source companion to [EigenScope](https://eigenscope.guardianai.network/)
 | Try the examples without an account or API key | [Run the local lab](#run-the-local-lab) and open its dashboard |
 | Evaluate an SDK integration with your service | [Connect to EigenScope](#connect-to-eigenscope) using your authorized API access |
 | Test automatic model profiles and inference latency | Follow the [model integration guide](docs/model-integration.md) with your checkpoints and SDK connector |
-| Discuss a tailored deployment or industry pilot | Visit [Sponsored R&D](https://eigenscope.guardianai.network/?view=view-partnerships) or [contact Guardian AI](https://guardianai.network/contact) |
+| Discuss a tailored deployment or industry pilot | Visit [Sponsored R&D](https://eigenscope.guardianai.network/sponsored-rd) or [contact Guardian AI](https://guardianai.network/contact) |
 
 ## Run the local lab
 
@@ -32,7 +32,7 @@ Open **http://127.0.0.1:8765**. Select a scenario, choose **Run**, and inspect i
 
 **Local scenarios and the dashboard need no EigenScope account, API key or hosted credits.** Installation downloads the pinned packages; these scenarios then run locally. The dashboard does not initiate authenticated API tests.
 
-Python 3.12 is selected automatically. Python 3.11–3.13 are the initial CI targets. The default scenarios need no Docker daemon, GPU, radio hardware or physical robot. Git is used for the coding workflow. The installed Python SDK is an unmodified, hash-verified vendor snapshot; [SDK versions and provenance](docs/sdk-snapshots.md) explain the reproducible baseline.
+Python 3.12 is selected automatically. Python 3.11–3.13 are the initial CI targets. The default scenarios need no Docker daemon, GPU, radio hardware or physical robot. Git is used for the coding workflow. The installed Python SDK is an unmodified, hash-verified official package; [SDK versions and provenance](docs/sdk-snapshots.md) explain the reproducible baseline.
 
 ![Live telecom queue and throughput observations](docs/verification/dashboard-telecom-light.jpg)
 
@@ -55,7 +55,7 @@ Run these commands from the repository directory. Each guide explains the setup,
 | [Robotics](docs/scenarios/robotics.md) | MuJoCo physics, navigation, sensing and an independent safety envelope | `uv run --frozen eigenscope-lab run robotics` |
 | [Oil & Gas](docs/scenarios/oil-gas.md) | CoolProp methane properties, SciPy receiver dynamics and real OPC UA authorization checks | `uv run --frozen eigenscope-lab run oil-gas` |
 
-Pair the lab examples with EigenScope's product blueprints: [coding agents](https://eigenscope.guardianai.network/guide/agent-firewall?usecase=coding), [tool-result protection](https://eigenscope.guardianai.network/guide/agent-firewall?usecase=ipi), [telecom](https://eigenscope.guardianai.network/guide/agent-firewall?usecase=6g) and [robotics](https://eigenscope.guardianai.network/guide/agent-firewall?usecase=robotics).
+Pair the lab examples with EigenScope's product blueprints: [coding agents](https://eigenscope.guardianai.network/guide/coding), [tool-result protection](https://eigenscope.guardianai.network/guide/tool-results), [telecom](https://eigenscope.guardianai.network/guide/telecom), [robotics](https://eigenscope.guardianai.network/guide/robotics), [Oil & Gas](https://eigenscope.guardianai.network/guide/oil-gas) and [model platforms](https://eigenscope.guardianai.network/guide/model-platforms).
 
 The local lab exercises the external systems around EigenScope. Its `live` command separately calls the genuine SDK and configured service, then compares the observed results with the scenario's stated expectations. Read [architecture and fidelity](docs/architecture.md) for the exact components used in each tier.
 
@@ -65,7 +65,7 @@ For protocol-stack testing, the optional [native 5G tier](infra/telecom/README.m
 
 When you are ready to test the hosted service or your own sidecar:
 
-1. Open [EigenScope Integrations](https://eigenscope.guardianai.network/?view=view-sdk) for product-side SDK setup and API-access controls. The [official package registry](https://eigenscope.guardianai.network/registry) lists the vendor distributions. For deployment-specific access or a tailored pilot, use [Sponsored R&D](https://eigenscope.guardianai.network/?view=view-partnerships).
+1. Open [EigenScope Integrations](https://eigenscope.guardianai.network/integrations) for product-side SDK setup and API-access controls. The [official package registry](https://eigenscope.guardianai.network/registry) lists the vendor distributions. For deployment-specific access or a tailored pilot, use [Sponsored R&D](https://eigenscope.guardianai.network/sponsored-rd).
 2. Follow the lab's [live SDK/API setup](docs/live-testing.md). Set `ORTHOCORE_API_KEY` through your shell or secret manager and choose the service origin you are authorized to test.
 3. Run a selected case or the full synthetic workflow set:
 
@@ -90,7 +90,9 @@ uv run --frozen eigenscope-lab live --case challenges --output results/challenge
 
 For teams operating their own models, the [model matrix runner](docs/model-integration.md) exercises real causal-model inference, automatic profile preparation and reuse through the SDK connector, and baseline versus integrated generation latency. Select your checkpoints, connect your deployment and inspect independent activation checks alongside p50/p95/p99 measurements.
 
-Follow the guide to install the separate model environment, run the local GPT-2/Llama engine checks, and connect your actual models. Model-inference dependencies stay out of the normal industry-scenario setup; private profiles stay in your protected runtime or private cache.
+Follow the guide to install the separate model environment, run the local GPT-2/Llama engine checks, and connect your actual models with the official `eigenscope_sdk.lab_connector:connect` adapter. Your application uses the same SDK's `connect_model(model)` entry point after the operator prepares its protected runtime. Model-inference dependencies stay out of the normal industry-scenario setup; private profiles stay in your protected runtime or private cache.
+
+The [model-platform guide](https://eigenscope.guardianai.network/guide/model-platforms), [integration setup](https://eigenscope.guardianai.network/integrations#model-connection) and [Circuit Microscope](https://eigenscope.guardianai.network/circuits) connect the application, runtime and inspection paths. [Provider engineering](https://eigenscope.guardianai.network/sponsored-rd?vertical=MODEL_PROVIDERS_ENTERPRISE_AI&usecase=model-platforms) covers additional architectures, custom checkpoints, inference engines, hardware, private deployments and OEM integration.
 
 ## Read the results
 
