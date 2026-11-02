@@ -70,6 +70,8 @@ def _validate_cases(cases: Any) -> list[dict[str, Any]]:
             "revision",
             "prompt",
             "max_new_tokens",
+            "dtype",
+            "attn_implementation",
         }:
             raise ValueError("Model entries contain unsupported fields")
         label, reference = case.get("id"), case.get("reference")
@@ -106,6 +108,16 @@ def _validate_cases(cases: Any) -> list[dict[str, Any]]:
         tokens = case.get("max_new_tokens", 8)
         if not _integer(tokens, 1, 64):
             raise ValueError("max_new_tokens must be an integer from one to 64")
+        if "dtype" in case and (
+            not isinstance(case["dtype"], str)
+            or case["dtype"] not in {"auto", "float32", "float16", "bfloat16"}
+        ):
+            raise ValueError("dtype must be auto, float32, float16 or bfloat16")
+        if "attn_implementation" in case and (
+            not isinstance(case["attn_implementation"], str)
+            or case["attn_implementation"] not in {"eager", "sdpa"}
+        ):
+            raise ValueError("attn_implementation must be eager or sdpa")
         labels.add(label)
         normalized.append({**case, "prompt": prompt, "max_new_tokens": tokens})
     return normalized
@@ -196,16 +208,44 @@ def _generation(value: Any, tokens: int) -> dict[str, Any]:
         for name in ("token_ids", "wall_ms", "ttft_ms", "tokens_per_second", "generated_tokens")
     }
     observed["token_ids"] = tuple(value["token_ids"])
+    if "dtype" in value:
+        if not isinstance(value["dtype"], str) or value["dtype"] not in {
+            "float16",
+            "bfloat16",
+            "float32",
+            "float64",
+        }:
+            raise ModelContractError("Invalid inference precision observation")
+        observed["dtype"] = value["dtype"]
+    if "attn_implementation" in value:
+        if not isinstance(value["attn_implementation"], str) or value[
+            "attn_implementation"
+        ] not in {"eager", "sdpa", "flash_attention_2", "flash_attention_3", "flex_attention"}:
+            raise ModelContractError("Invalid attention implementation observation")
+        observed["attn_implementation"] = value["attn_implementation"]
     return observed
 
 
 def _metrics(samples: list[dict[str, Any]]) -> dict[str, Any]:
-    return {
+    result = {
         "wall_ms": _stats([x["wall_ms"] for x in samples]),
         "ttft_ms": _stats([x["ttft_ms"] for x in samples]),
         "tokens_per_second": _stats([x["tokens_per_second"] for x in samples]),
         "generated_tokens": sum(x["generated_tokens"] for x in samples),
     }
+    precisions = {sample.get("dtype") for sample in samples}
+    if len(precisions) != 1:
+        raise ModelContractError("Inference precision changed during measurement")
+    precision = precisions.pop()
+    if precision is not None:
+        result["dtype"] = precision
+    implementations = {sample.get("attn_implementation") for sample in samples}
+    if len(implementations) != 1:
+        raise ModelContractError("Inference attention implementation changed during measurement")
+    implementation = implementations.pop()
+    if implementation is not None:
+        result["attn_implementation"] = implementation
+    return result
 
 
 def _snapshot(session: Any) -> dict[str, Any]:
@@ -334,6 +374,16 @@ def _session_samples(
                 row, f"{mode}_sample_{sample}_counters_preserved_between_calls", before == previous
             )
             observed = _observe(engine, case)
+            _check(
+                row,
+                f"{mode}_sample_{sample}_precision_preserved",
+                observed.get("dtype") == baseline[0].get("dtype"),
+            )
+            _check(
+                row,
+                f"{mode}_sample_{sample}_attention_implementation_preserved",
+                observed.get("attn_implementation") == baseline[0].get("attn_implementation"),
+            )
             after = _snapshot(session)
             monotonic = (
                 all(
@@ -424,6 +474,12 @@ def run_model_matrix(
                 device=device,
                 allow_downloads=allow_downloads,
                 seed=seed,
+                **({"dtype": case["dtype"]} if "dtype" in case else {}),
+                **(
+                    {"attn_implementation": case["attn_implementation"]}
+                    if "attn_implementation" in case
+                    else {}
+                ),
             )
 
     suites: list[dict[str, Any]] = []

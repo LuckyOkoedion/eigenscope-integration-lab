@@ -24,7 +24,7 @@ robotics = ["mujoco>=3.3,<3.4; sys_platform == 'darwin' and platform_machine == 
 telecom = ["simpy>=4.1,<5"]
 provider = ["openai>=2,<3", "httpx>=0.28,<1"]
 tools = ["mcp>=1.30,<2", "cryptography>=50,<51"]
-live = ["eigenscope-sdk @ https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.2-4da938e7/eigenscope_sdk-0.2.2-py3-none-any.whl#sha256=4da938e7c6db1acffd3d3098e2e9c0ae692d0741cd7f1ee413f171e856f662b8"]
+live = ["eigenscope-sdk @ https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl#sha256=ac5485b605244ba513e0e99c9f7b2eb04f5499e7c08ff505803cc8afdf14d061"]
 oil-gas = ["CoolProp>=8,<9", "scipy>=1.17,<2", "asyncua>=2.1,<3", "cryptography>=50,<51"]
 all = ["eigenscope-integration-lab[robotics,telecom,provider,tools,live,oil-gas]"]
 

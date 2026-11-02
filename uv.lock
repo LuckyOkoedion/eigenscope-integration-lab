@@ -533,7 +533,7 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'oil-gas'", specifier = ">=50,<51" },
     { name = "cryptography", marker = "extra == 'tools'", specifier = ">=50,<51" },
     { name = "eigenscope-integration-lab", extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas"], marker = "extra == 'all'" },
-    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.2-4da938e7/eigenscope_sdk-0.2.2-py3-none-any.whl" },
+    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl" },
     { name = "httpx", marker = "extra == 'provider'", specifier = ">=0.28,<1" },
     { name = "mcp", marker = "extra == 'tools'", specifier = ">=1.30,<2" },
     { name = "mujoco", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin' and extra == 'robotics'", specifier = ">=3.3,<3.4" },
@@ -556,11 +556,18 @@ dev = [
 
 [[package]]
 name = "eigenscope-sdk"
-version = "0.2.2"
-source = { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.2-4da938e7/eigenscope_sdk-0.2.2-py3-none-any.whl" }
+version = "0.2.5"
+source = { url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl" }
 wheels = [
-    { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.2-4da938e7/eigenscope_sdk-0.2.2-py3-none-any.whl", hash = "sha256:4da938e7c6db1acffd3d3098e2e9c0ae692d0741cd7f1ee413f171e856f662b8" },
+    { url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl", hash = "sha256:ac5485b605244ba513e0e99c9f7b2eb04f5499e7c08ff505803cc8afdf14d061" },
 ]
+
+[package.metadata]
+requires-dist = [
+    { name = "torch", marker = "extra == 'model'", specifier = ">=2.6,<3" },
+    { name = "transformers", marker = "extra == 'model'", specifier = ">=4.51,<6" },
+]
+provides-extras = ["model"]
 
 [[package]]
 name = "etils"

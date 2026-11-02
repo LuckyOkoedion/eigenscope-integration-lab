@@ -170,6 +170,131 @@ def test_loader_disables_remote_code_pickle_weights_and_unrequested_downloads(mo
         engine.close()
 
 
+@pytest.mark.parametrize("dtype", [True, 0, [], {}, "float64", "BF16", ""])
+def test_invalid_precision_is_rejected_before_loading_dependencies(monkeypatch, dtype):
+    from eigenscope_lab import model_engine
+
+    def forbidden():
+        pytest.fail("Invalid precision must not load the model framework")
+
+    monkeypatch.setattr(model_engine, "_dependencies", forbidden)
+    with pytest.raises(ValueError, match="dtype"):
+        TransformersEngine("example/model", "a" * 40, dtype=dtype)
+
+
+@pytest.mark.parametrize("dtype", ["auto", "float32", "float16", "bfloat16"])
+def test_explicit_precision_goes_only_to_maintained_model_loader(monkeypatch, dtype):
+    from eigenscope_lab import model_engine
+
+    calls = []
+    config = SimpleNamespace(model_type="fixture", hidden_size=32, _commit_hash="a" * 40)
+    model = SimpleNamespace(config=config, to=lambda _device: None, eval=lambda: None)
+
+    def load_tokenizer(_source, **options):
+        calls.append(("tokenizer", options))
+        return object()
+
+    def load_model(_source, **options):
+        calls.append(("model", options))
+        return model
+
+    torch = SimpleNamespace(
+        device=lambda _name: SimpleNamespace(type="cpu"),
+        float32=object(),
+        float16=object(),
+        bfloat16=object(),
+    )
+    transformers = SimpleNamespace(
+        AutoTokenizer=SimpleNamespace(from_pretrained=load_tokenizer),
+        AutoModelForCausalLM=SimpleNamespace(from_pretrained=load_model),
+    )
+    monkeypatch.setattr(model_engine, "_dependencies", lambda: (torch, transformers))
+    engine = TransformersEngine("example/model", "a" * 40, dtype=dtype)
+    try:
+        assert "torch_dtype" not in calls[0][1]
+        assert calls[1][1]["torch_dtype"] == ("auto" if dtype == "auto" else getattr(torch, dtype))
+        assert calls[1][1]["use_safetensors"] is True
+        assert calls[1][1]["trust_remote_code"] is False
+    finally:
+        engine.close()
+
+
+@pytest.mark.parametrize("dtype", ["float32", "bfloat16"])
+@pytest.mark.parametrize("attn_implementation", ["eager", "sdpa"])
+def test_local_checkpoint_precision_runs_real_model_forward(tmp_path, dtype, attn_implementation):
+    _require_engine_dependencies()
+    from tokenizers import Tokenizer, models
+    from transformers import PreTrainedTokenizerFast
+
+    original = make_smoke_engine("gpt2")
+    try:
+        original.model.save_pretrained(tmp_path)
+    finally:
+        original.close()
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_object=Tokenizer(models.WordLevel({"[UNK]": 0, "test": 1}, unk_token="[UNK]")),
+        unk_token="[UNK]",
+    )
+    tokenizer.save_pretrained(tmp_path)
+    engine = TransformersEngine(
+        str(tmp_path), None, dtype=dtype, attn_implementation=attn_implementation
+    )
+    try:
+        observed = engine.generate("test", max_new_tokens=2)
+        assert observed["dtype"] == dtype
+        assert observed["attn_implementation"] == attn_implementation
+        assert observed["finite_logits"] is True
+        assert observed["generated_tokens"] == 2
+    finally:
+        engine.close()
+
+
+@pytest.mark.parametrize("value", [True, 0, [], {}, "flash_attention_2", "auto", ""])
+def test_invalid_attention_selection_is_rejected_before_framework_load(monkeypatch, value):
+    from eigenscope_lab import model_engine
+
+    def forbidden():
+        pytest.fail("Invalid attention selection must not load the model framework")
+
+    monkeypatch.setattr(model_engine, "_dependencies", forbidden)
+    with pytest.raises(ValueError, match="attn_implementation"):
+        TransformersEngine("example/model", "a" * 40, attn_implementation=value)
+
+
+@pytest.mark.parametrize("value", ["eager", "sdpa"])
+def test_attention_selection_goes_only_to_model_loader(monkeypatch, value):
+    from eigenscope_lab import model_engine
+
+    calls = []
+    model = SimpleNamespace(
+        config=SimpleNamespace(model_type="fixture", hidden_size=32, _commit_hash="a" * 40),
+        to=lambda _device: None,
+        eval=lambda: None,
+    )
+
+    def load_tokenizer(_source, **options):
+        calls.append(("tokenizer", options))
+        return object()
+
+    def load_model(_source, **options):
+        calls.append(("model", options))
+        return model
+
+    torch = SimpleNamespace(device=lambda _name: SimpleNamespace(type="cpu"))
+    transformers = SimpleNamespace(
+        AutoTokenizer=SimpleNamespace(from_pretrained=load_tokenizer),
+        AutoModelForCausalLM=SimpleNamespace(from_pretrained=load_model),
+    )
+    monkeypatch.setattr(model_engine, "_dependencies", lambda: (torch, transformers))
+    engine = TransformersEngine("example/model", "a" * 40, attn_implementation=value)
+    try:
+        assert "attn_implementation" not in calls[0][1]
+        assert calls[1][1]["attn_implementation"] == value
+        assert calls[1][1]["trust_remote_code"] is False
+    finally:
+        engine.close()
+
+
 def test_unavailable_cuda_is_rejected_before_querying_current_device():
     def current_device():
         pytest.fail("A missing CUDA runtime must not be initialized")
