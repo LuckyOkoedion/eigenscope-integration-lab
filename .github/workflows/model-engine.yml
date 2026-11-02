@@ -42,5 +42,5 @@ jobs:
           HF_HUB_DISABLE_TELEMETRY: '1'
           HF_HUB_OFFLINE: '1'
         run: |
-          .venv-models/bin/python -m pytest tests/test_model_engine.py tests/test_model_integration.py tests/test_model_cli.py tests/test_model_e2e.py -q -p no:cacheprovider
+          .venv-models/bin/python -m pytest tests/test_model_engine.py tests/test_model_integration.py tests/test_model_cli.py tests/test_model_e2e.py tests/test_model_privacy.py tests/test_model_semantics.py tests/test_model_text_generation.py -q -p no:cacheprovider
           .venv-models/bin/python -m eigenscope_lab.cli models --engine-smoke --repeat 5 --warmup 1 --output results/model-engine.json

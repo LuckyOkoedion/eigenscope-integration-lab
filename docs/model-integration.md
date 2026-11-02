@@ -199,13 +199,37 @@ The default Transformers engine adds temporary observers before and after the at
 
 Both fresh and cached sessions are validated. The reported integrated generation and projection percentiles use the cached session; preparation reports fresh and cached durations separately. Warmups are separate from timed samples. Inference must use the already prepared profile: a provisioning event during measured generation fails the lifecycle check. Missing prerequisites remain `BLOCKED`; a rejected expectation remains `FAIL`. Without a connector, a successful baseline can pass while its integration suite remains `BLOCKED`.
 
-For the two-model example, a successful release-validation report contains four
-passing suites: baseline and integration for each checkpoint. Review the named
-checks and preserve failed results alongside the run's SDK, framework, precision
-and attention versions. This report is written to the ignored
+For the two-model example, a successful release-validation report contains six
+passing suites: baseline, integration and privacy for each checkpoint. Review the
+named checks and preserve failed results alongside the run's SDK, framework,
+precision and attention versions. This report is written to the ignored
 `results/model-release-validation.json` file.
 
-For task and privacy effectiveness, pair this matrix with held-out, independently scored prompts for your domain. Record expected answers, private spans and permitted output before running them. An activation changing establishes intervention; task preservation and private-information handling require their own output checks. Use [the live SDK/API tests](live-testing.md) for text protection and owned-mapping lifecycle contracts.
+## Verify automatic privacy and task preservation
+
+Use natural, untagged prompts for model-privacy evaluation on every deployment checkpoint. Include realistic synthetic API keys, customer/person names, account references, email addresses, internal routes and financial figures alongside public task values such as cloud regions, programming languages, status codes, product tiers, cities and JSON schemas. Store the expected sensitive spans and permitted output in the test oracle; do not identify them with labels or wrappers in the input.
+
+Under `Task=1, Private=0`, inspect the actual generated output against three independent expectations:
+
+- **Removal (`R`):** the original sensitive values are absent.
+- **Public values (`P`):** the required public task values remain intact.
+- **Task (`T`):** the requested answer and output structure, including JSON keys and types where specified, are preserved.
+
+Keep generated text and activation values in memory. Export the named checks and measurements without the values themselves. A failed removal, public-value or structure expectation fails the model/privacy evaluation. Native hook observations establish that the intervention occurred; generated-output checks establish its effect on the requested workflow. Run these checks on Gemma and the second architecture family through the same official SDK connection.
+
+Ordinary checkpoint matrix runs include four natural-language R/P/T cases in a
+separate `model:<id>:privacy` suite. The cached connection generates an identity
+control and a protected response for each case. The identity control must
+actually reproduce the specified sensitive values while preserving the public
+values and requested structure; this prevents an unresponsive model from
+appearing to provide privacy. The protected response must pass all three output
+checks. A failing privacy suite also fails that model's integration suite.
+These semantic probes run separately from the measured inference population.
+They stop at the model's EOS token or a maximum of 192 newly generated tokens;
+only those generated tokens are decoded for evaluation. The local engine smoke
+command remains an inference-mechanics check.
+
+All published model/privacy prompts are natural and untagged, with validation that rejects cue words and wrappers before execution. Sensitive-value retention is a `P0` failure. Use the [zero-tag SDK/API challenges](live-testing.md#automatic-zero-tag-privacy-challenges) for automatic text protection and owned-mapping lifecycle checks.
 
 ## Read the latency measurements
 
