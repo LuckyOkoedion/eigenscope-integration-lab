@@ -1,12 +1,14 @@
 # SDK versions and reproducibility
 
-The Python lab uses the official, unmodified EigenScope SDK **0.2.2** from the [versioned SDK snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-python-0.2.2-4da938e7). The 27,492-byte wheel declares Apache-2.0 and is distributed with its provenance, license text and checksum:
+The Python lab uses the official, unmodified EigenScope SDK **0.2.5** from the [EigenScope package registry](https://eigenscope.guardianai.network/registry). Its immutable 33,471-byte [Python wheel](https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl) declares Apache-2.0 and has this SHA-256:
 
 ```text
-4da938e7c6db1acffd3d3098e2e9c0ae692d0741cd7f1ee413f171e856f662b8
+ac5485b605244ba513e0e99c9f7b2eb04f5499e7c08ff505803cc8afdf14d061
 ```
 
-`pyproject.toml` and `uv.lock` identify the archive and enforce its integrity. The TypeScript example uses the [unmodified SDK0.2.2 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.2-80b9beda), with its npm integrity pinned in `typescript/package-lock.json`. These pins make a test run's client version reproducible. The configured service is selected separately through `ORTHOCORE_BASE_URL`.
+`pyproject.toml` and `uv.lock` identify the archive and enforce its integrity. SDK 0.2.5 includes `eigenscope_sdk.connect_model` and the official `eigenscope_sdk.lab_connector:connect` adapter used by the [model integration guide](model-integration.md). Model inference and its protected runtime use the separate environment described there.
+
+The TypeScript example retains its independent [unmodified SDK 0.2.2 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.2-80b9beda), with npm integrity pinned in `typescript/package-lock.json`. The earlier [Python SDK 0.2.2 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-python-0.2.2-4da938e7) remains available with its original provenance, license and checksum for reproducing earlier runs. These independent pins make each run's client version reproducible. The configured service is selected separately through `ORTHOCORE_BASE_URL`.
 
 ## Update a dependency
 

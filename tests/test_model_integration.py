@@ -453,3 +453,76 @@ def test_invalid_controls_prevent_engine_start(kwargs):
 
     with pytest.raises(ValueError):
         run_model_matrix([model_case()], engine_factory=forbidden_factory, **kwargs)
+
+
+@pytest.mark.parametrize("dtype", [None, True, 0, [], {}, "float64", "BF16", ""])
+def test_invalid_matrix_precision_is_rejected_before_loading_models(dtype):
+    def forbidden_factory(_case):
+        pytest.fail("Invalid precision must not start a model")
+
+    with pytest.raises(ValueError, match="dtype"):
+        run_model_matrix([{**model_case(), "dtype": dtype}], engine_factory=forbidden_factory)
+
+
+@pytest.mark.parametrize("dtype", ["auto", "float32", "float16", "bfloat16"])
+def test_per_model_precision_reaches_default_engine(monkeypatch, dtype):
+    from eigenscope_lab import model_engine
+
+    received = []
+
+    def factory(reference, revision, **options):
+        received.append(options)
+        return FixtureEngine(model_case())
+
+    monkeypatch.setattr(model_engine, "TransformersEngine", factory)
+    result = run_model_matrix([{**model_case(), "dtype": dtype}], repeat=1, warmup=0)
+    assert received[0]["dtype"] == dtype
+    assert result["summary"]["PASS"] == 1
+
+
+def test_actual_precision_is_retained_and_changes_fail_comparison():
+    from eigenscope_lab.model_integration import _generation, _metrics
+
+    sample = FixtureEngine(model_case()).generate("test", 3)
+    observed = _generation({**sample, "dtype": "bfloat16"}, 3)
+    assert _metrics([observed])["dtype"] == "bfloat16"
+    changed = {**observed, "dtype": "float32"}
+    with pytest.raises(ValueError, match="precision changed"):
+        _metrics([observed, changed])
+
+
+@pytest.mark.parametrize("value", [None, True, 0, [], {}, "flash_attention_2", "auto", ""])
+def test_invalid_matrix_attention_is_rejected_before_model_load(value):
+    def forbidden_factory(_case):
+        pytest.fail("Invalid attention implementation must not start a model")
+
+    with pytest.raises(ValueError, match="attn_implementation"):
+        run_model_matrix(
+            [{**model_case(), "attn_implementation": value}], engine_factory=forbidden_factory
+        )
+
+
+@pytest.mark.parametrize("value", ["eager", "sdpa"])
+def test_per_model_attention_reaches_default_engine(monkeypatch, value):
+    from eigenscope_lab import model_engine
+
+    received = []
+
+    def factory(reference, revision, **options):
+        received.append(options)
+        return FixtureEngine(model_case())
+
+    monkeypatch.setattr(model_engine, "TransformersEngine", factory)
+    result = run_model_matrix([{**model_case(), "attn_implementation": value}], repeat=1, warmup=0)
+    assert received[0]["attn_implementation"] == value
+    assert result["summary"]["PASS"] == 1
+
+
+def test_actual_attention_is_retained_and_changes_fail_comparison():
+    from eigenscope_lab.model_integration import _generation, _metrics
+
+    sample = FixtureEngine(model_case()).generate("test", 3)
+    observed = _generation({**sample, "attn_implementation": "eager"}, 3)
+    assert _metrics([observed])["attn_implementation"] == "eager"
+    with pytest.raises(ValueError, match="attention implementation changed"):
+        _metrics([observed, {**observed, "attn_implementation": "sdpa"}])

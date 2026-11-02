@@ -2,14 +2,18 @@
   "schema_version": 1,
   "models": [
     {
-      "id": "model-a",
-      "reference": "/path/to/model-a",
+      "id": "gemma2",
+      "reference": "/path/to/models/gemma2",
+      "dtype": "bfloat16",
+      "attn_implementation": "eager",
       "prompt": "The integration laboratory is",
       "max_new_tokens": 8
     },
     {
-      "id": "model-b",
-      "reference": "/path/to/model-b",
+      "id": "pythia70m",
+      "reference": "/path/to/models/pythia70m",
+      "dtype": "float32",
+      "attn_implementation": "sdpa",
       "prompt": "The integration laboratory is",
       "max_new_tokens": 8
     }
