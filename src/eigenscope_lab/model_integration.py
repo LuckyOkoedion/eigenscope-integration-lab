@@ -105,6 +105,9 @@ def _validate_cases(cases: Any) -> list[dict[str, Any]]:
         prompt = case.get("prompt", DEFAULT_PROMPT)
         if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 4096:
             raise ValueError("Provide a nonempty synthetic prompt of at most 4096 characters")
+        from .challenges import validate_untagged_prompt
+
+        validate_untagged_prompt(prompt)
         tokens = case.get("max_new_tokens", 8)
         if not _integer(tokens, 1, 64):
             raise ValueError("max_new_tokens must be an integer from one to 64")
@@ -352,6 +355,60 @@ def _audit_modes(engine: Any, session: Any, case: dict[str, Any], row: dict[str,
     )
 
 
+def _model_privacy(engine: Any, session: Any, row: dict[str, Any]) -> None:
+    """Evaluate zero-tag generated-output R/P/T outside latency measurements."""
+    from .model_privacy import MODEL_PRIVACY_CASES, baseline_checks, output_checks
+
+    row.pop("status", None)
+    row.pop("reason", None)
+    row["engine"] = "loaded checkpoint and attached SDK model connection"
+    row["semantic_cases"] = len(MODEL_PRIVACY_CASES)
+    try:
+        if not callable(getattr(engine, "generate_text", None)):
+            raise NotImplementedError("Decoded checkpoint generation is required")
+        for case in MODEL_PRIVACY_CASES:
+            for mode in ("identity", "protected"):
+                with _quiet():
+                    session.set_mode(mode)
+                before = _snapshot(session)
+                with _quiet():
+                    observed = engine.generate_text(case.prompt, 192)
+                after = _snapshot(session)
+                if (
+                    not isinstance(observed, dict)
+                    or observed.get("finite_logits") is not True
+                    or not _integer(observed.get("generated_tokens"), 1, 192)
+                    or not isinstance(observed.get("generated_text"), str)
+                    or len(observed["generated_text"]) > 65536
+                ):
+                    raise ModelContractError("Invalid semantic generation observation")
+                checks = (baseline_checks if mode == "identity" else output_checks)(
+                    case, observed["generated_text"]
+                )
+                for check in checks:
+                    _check(row, f"{case.id}:{mode}:{check['name']}", check["passed"] is True)
+                    if (
+                        mode == "protected"
+                        and check["name"] == "sensitive_values_absent"
+                        and check.get("matched_sensitive_values", 0) > 0
+                    ):
+                        row["severity"] = "P0"
+                        row["reason_code"] = "ZERO_TAG_PRIVACY_LEAK"
+                _check(
+                    row,
+                    f"{case.id}:{mode}:real_projection_executed",
+                    after["hook_calls"] > before["hook_calls"]
+                    and after["projected_calls"] > before["projected_calls"],
+                )
+                _check(
+                    row,
+                    f"{case.id}:{mode}:no_runtime_provisioning",
+                    after["provision_count"] == before["provision_count"],
+                )
+    except Exception as exc:
+        _error(row, exc)
+
+
 def _session_samples(
     engine: Any,
     session: Any,
@@ -489,9 +546,18 @@ def run_model_matrix(
         row: dict[str, Any] = {"suite": f"model:{case['id']}:integration", "checks": []}
         suites.extend([baseline_row, row])
         engine = None
+        privacy_row = None
         try:
             with _quiet():
                 engine = engine_factory(case)
+            if getattr(engine, "provenance", None) == "checkpoint":
+                privacy_row = {
+                    "suite": f"model:{case['id']}:privacy",
+                    "checks": [],
+                    "status": "BLOCKED",
+                    "reason": "Complete model connection before zero-tag R/P/T evaluation",
+                }
+                suites.append(privacy_row)
             identity = _identity(engine)
             identity_digest = hashlib.sha256(
                 json.dumps(identity, sort_keys=True).encode()
@@ -584,6 +650,17 @@ def run_model_matrix(
                         )
                         if not refresh:
                             protected, projections = values, timings
+                            if privacy_row is not None:
+                                _model_privacy(engine, session, privacy_row)
+                                _check(
+                                    row,
+                                    "zero_tag_generated_output_rpt",
+                                    bool(privacy_row["checks"])
+                                    and privacy_row.get("status") not in {"BLOCKED", "ERROR"}
+                                    and all(
+                                        check["passed"] is True for check in privacy_row["checks"]
+                                    ),
+                                )
                     finally:
                         if session is not None:
                             for attempt in range(2):
@@ -641,6 +718,7 @@ def run_model_matrix(
         "profile_evidence": "SDK connector receipts and cumulative projection observations",
         "inference_boundary": "After tokenization and initial device transfer, through completed greedy generation",
         "validation_probes_excluded_from_latency": True,
+        "zero_tag_generated_output_checks_excluded_from_latency": True,
     }
     result["dependencies"] = {
         name: distribution_version(name) for name in ("torch", "transformers", "eigenscope-sdk")

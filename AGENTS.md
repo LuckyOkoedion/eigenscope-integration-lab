@@ -45,11 +45,23 @@ A local engine pass establishes the stated simulation/protocol contract. Evaluat
 
 Use synthetic inputs, bounded workloads and deterministic seeds. Cover a useful positive workflow and meaningful adversarial cases. Validate schemas, finite numbers, units, freshness, authorization and replay at the boundary. Close sockets, subprocesses and temporary workspaces on success, failure and cancellation. For Oil & Gas, model proposals never authorize themselves; independent safety logic and the local operator-approval boundary remain in force.
 
+## Automatic privacy and model tests
+
+Make natural, untagged prompts the primary privacy tests. Use realistic synthetic names, account references, API keys, email addresses, internal paths and financial context alongside public task values. Keep expected sensitive spans, permitted values and output requirements in the test oracle, outside the prompt. Do not mark input spans with privacy labels, wrappers or instructions telling the system which values to remove. Common-noun role assignments are unsuitable privacy probes.
+
+Keep the public privacy fixture set entirely natural and untagged. Fixture validation must reject privacy cue words, wrappers and removal directives before a prompt reaches the service. Sensitive-value retention in a valid natural test is a `P0` failure. A refused request or missing prerequisite must retain its own result rather than becoming a successful privacy check.
+
+Keep calibration data separate from acceptance fixtures. Add unseen natural variants when evaluating a deployment; do not implement entity lookups or special cases for the published examples.
+
+For direct model integration, verify actual generated output under the protection controls: sensitive-value removal (`R`), public-value preservation (`P`) and task/output-structure preservation (`T`). Observe native intervention separately and keep its probe overhead outside latency samples. A tensor changing cannot by itself pass an output-privacy or task-preservation check. Engine smoke models exercise inference mechanics; use actual deployment checkpoints and the official SDK connection for model/privacy results.
+
 ## UI/UX quality
 
 Give each industry a clear identity, purpose and primary action. Show live measurements and understandable loading, running, stopping, stopped, passed and failed states. Expose the next useful action and keep success styling tied to the current run. Use plain-language recovery in the interface; log detailed exceptions in the local server diagnostics.
 
 Check desktop, tablet and mobile widths, light and dark themes, keyboard navigation, focus, text contrast, long labels and touch targets. Diagrams must reflect actual measurements and state transitions. Avoid overlapping content, unexplained internal shorthand and decorative animations that imply unobserved activity. Keep technical detail available through guides or progressive disclosure.
+
+Inspect real exposed Workbench, Portal, Integrations and SDK/API flows. Use featured/default permalinks visible in the Workbench and new ones created in the test session. Inspect DOM, console and naturally loaded network responses against the deployment's approved readiness, release and assurance requirements. Record exact selectors, requests and JSON paths for mismatches. The selected integration's test action must execute its actual SDK/runtime path and display genuine measurements. Do not invent hidden-page inventories or substitute simulated success for the selected integration.
 
 ## Live tests and publication
 

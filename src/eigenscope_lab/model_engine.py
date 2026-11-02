@@ -274,6 +274,26 @@ class TransformersEngine:
                 handle.remove()
 
     def generate(self, prompt: str, max_new_tokens: int) -> dict[str, Any]:
+        """Measure fixed-length greedy inference for the latency comparison."""
+        return self._generate(prompt, max_new_tokens, stop_at_eos=False)
+
+    def generate_text(self, prompt: str, max_new_tokens: int = 192) -> dict[str, Any]:
+        """Run a bounded semantic probe, decoding only newly generated tokens.
+
+        Unlike the fixed-length benchmark, this respects the model's EOS token.
+        Generated text is retained only in process memory for the R/P/T oracle.
+        """
+        if self._tokenizer is None or not callable(getattr(self._tokenizer, "decode", None)):
+            raise NotImplementedError("A checkpoint tokenizer is required for semantic probes")
+        observed = self._generate(prompt, max_new_tokens, stop_at_eos=True)
+        text = self._tokenizer.decode(
+            observed["token_ids"], skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )
+        if not isinstance(text, str) or len(text) > 65536:
+            raise ValueError("The model returned an invalid generated text observation")
+        return {**observed, "generated_text": text}
+
+    def _generate(self, prompt: str, max_new_tokens: int, *, stop_at_eos: bool) -> dict[str, Any]:
         """Run fixed-length greedy decoding; timings include hook and cache execution.
 
         Token IDs remain an internal comparison value. The outer runner exports
@@ -296,6 +316,16 @@ class TransformersEngine:
         if type(positions) is int and input_ids.shape[1] + max_new_tokens > positions:
             raise ValueError("The requested generation exceeds the model context window")
         tokens: list[int] = []
+        eos = getattr(getattr(self.model, "generation_config", None), "eos_token_id", None)
+        if eos is None:
+            eos = getattr(self.model.config, "eos_token_id", None)
+        eos_tokens = (
+            {eos}
+            if type(eos) is int
+            else {token for token in eos if type(token) is int}
+            if isinstance(eos, (list, tuple))
+            else set()
+        )
         past = None
         finite = True
         ttft_ms = 0.0
@@ -320,6 +350,8 @@ class TransformersEngine:
                 self._synchronize()
                 if len(tokens) == 1:
                     ttft_ms = (time.perf_counter() - started) * 1000
+                if stop_at_eos and tokens[-1] in eos_tokens:
+                    break
                 past = result.past_key_values
                 if past is None:
                     raise RuntimeError("The model did not return the requested inference cache")

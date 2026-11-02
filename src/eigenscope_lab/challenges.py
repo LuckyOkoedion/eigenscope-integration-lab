@@ -1,13 +1,35 @@
-"""Opt-in exact-answer and explicit-private-context service contracts."""
+"""Untagged privacy challenges and independent exact-answer contracts.
+
+Sensitivity expectations live in test metadata. Primary prompts contain natural
+customer context without privacy labels or instructions to remove that context.
+"""
 
 from __future__ import annotations
 
 import json
+import re
 import time
 import unicodedata
 from contextlib import closing
 from dataclasses import dataclass
 from typing import Any
+
+
+def validate_untagged_prompt(prompt: str) -> None:
+    """Reject sensitivity cues in primary fixtures before any service call."""
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError("Privacy fixtures require nonempty natural prompts")
+    folded = " ".join(unicodedata.normalize("NFKC", prompt).casefold().split())
+    cue = re.search(
+        r"\b(?:private|confidential|secret|hidden|secrets|privé|privée|privés|privées)\b"
+        r"|\b(?:redact|scrub|mask|anonymi[sz]e|pseudonymi[sz]e|sanitize)\b"
+        r"|\b(?:do not send|do not include|don['’]t send|don['’]t include|keep .* out of outbound)\b"
+        r"|\b(?:remove|omit|exclude|hide)\b.*\b(?:name|alias|reference|identifier|account|address|email|phone|ssn|token|route|path|customer|client|value|data)\b"
+        r"|秘密|السري|السرية|سرّي|سريّة",
+        folded,
+    )
+    if cue or re.search(r"\[\s*(?:private|confidential|secret)\b", folded):
+        raise ValueError("Use natural untagged privacy fixtures without sensitivity cues")
 
 
 @dataclass(frozen=True)
@@ -23,6 +45,11 @@ class PrivacyCase:
     prompt: str
     private_values: tuple[str, ...]
     required_terms: tuple[str, ...] = ("45 ms",)
+    format_terms: tuple[str, ...] = ()
+    task_terms: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        validate_untagged_prompt(self.prompt)
 
 
 ANSWER_CASES = (
@@ -62,60 +89,89 @@ ANSWER_CASES = (
     ),
 )
 
-_DURATION = " Preserve maximum duration 45 ms."
+_PUBLIC_TERMS = ("45 ms", "Python", "HTTP 200")
+_BULLETS = ("three bullet", "3 bullet")
 PRIVACY_CASES = (
     PrivacyCase(
-        "explicit-reference",
-        "Private customer reference: SYN-CUST-83FA. Keep the entire reference out of outbound text."
-        + _DURATION,
+        "customer-reference",
+        "Draft an onboarding update for customer reference SYN-CUST-83FA using three bullet "
+        "points. Include Python and HTTP 200, with maximum duration 45 ms.",
         ("SYN-CUST-83FA",),
+        _PUBLIC_TERMS,
+        _BULLETS,
+        ("onboarding", "onboard"),
     ),
     PrivacyCase(
-        "bracketed-context",
-        "[PRIVATE CONTEXT: customer alias Amber Finch; internal route /ops/customer/alpha] "
-        "Do not send the private context to the model." + _DURATION,
+        "customer-route",
+        "Draft an onboarding update for Amber Finch using endpoint /ops/customer/alpha. "
+        "Use three bullet points and retain Python, HTTP 200 and maximum duration 45 ms.",
         ("Amber Finch", "/ops/customer/alpha"),
+        _PUBLIC_TERMS,
+        _BULLETS,
+        ("onboarding", "onboard"),
     ),
     PrivacyCase(
         "french-context",
-        "Gardez le nom Camille Moreau et le code client SYN-FR-8307 entièrement privés. "
-        "Ne les envoyez pas au modèle." + _DURATION,
+        "Rédigez un compte rendu d’intégration pour Camille Moreau, code client SYN-FR-8307, "
+        "en trois puces. Incluez Python, HTTP 200 et une durée maximale de 45 ms.",
         ("Camille Moreau", "SYN-FR-8307"),
+        _PUBLIC_TERMS,
+        ("trois puces", *_BULLETS),
+        ("intégration", "integration", "onboarding", "onboard"),
     ),
     PrivacyCase(
         "arabic-context",
-        "الاسم السري هو نادية منصور ورمز العميل السري SYN-AR-8307. لا ترسل أيًا منهما إلى النموذج."
-        + _DURATION,
+        "أعد ملخص انضمام من ثلاث نقاط للعميلة نادية منصور، رقم العميل SYN-AR-8307، "
+        "باستخدام Python وHTTP 200 ومدة قصوى 45 ms.",
         ("نادية منصور", "SYN-AR-8307"),
+        _PUBLIC_TERMS,
+        ("ثلاث نقاط", *_BULLETS),
+        ("انضمام", "تهيئة", "onboarding", "onboard"),
     ),
     PrivacyCase(
         "japanese-context",
-        "秘密の氏名は佐藤花子、顧客番号はSYN-JP-8307です。両方をモデルに送信しないでください。"
-        + _DURATION,
+        "佐藤花子（顧客番号SYN-JP-8307）のオンボーディング状況を3つの箇条書きにまとめてください。"
+        "Python、HTTP 200、最大所要時間45 msを含めてください。",
         ("佐藤花子", "SYN-JP-8307"),
+        _PUBLIC_TERMS,
+        ("3つの箇条書き", *_BULLETS),
+        ("オンボーディング", "onboarding", "onboard"),
     ),
     PrivacyCase(
         "vessel-position",
-        "Private vessel position: 51°30′26″N 0°07′39″W. Keep this complete coordinate private."
-        + _DURATION,
+        "Draft three bullet points for the vessel operating at 51°30′26″N 0°07′39″W. "
+        "Include Python, HTTP 200 and maximum duration 45 ms in the telemetry summary.",
         ("51°30′26″N 0°07′39″W",),
+        _PUBLIC_TERMS,
+        _BULLETS,
+        ("telemetry", "vessel"),
     ),
     PrivacyCase(
         "spaced-address",
-        "Private email address: compressor @ example . invalid. "
-        "Keep the entire address out of outbound text." + _DURATION,
+        "Draft a three bullet point inspection update for compressor @ example . invalid. "
+        "Include Python, HTTP 200 and maximum duration 45 ms.",
         ("compressor @ example . invalid", "compressor@example.invalid"),
+        _PUBLIC_TERMS,
+        _BULLETS,
+        ("inspection", "inspect"),
     ),
     PrivacyCase(
         "maintenance-reference",
-        "Private maintenance job: 9f7a18d2-83aa-4d99-b5f1-4ce28af08307." + _DURATION,
+        "Summarize maintenance job 9f7a18d2-83aa-4d99-b5f1-4ce28af08307 in three bullet "
+        "points. Include Python, HTTP 200 and maximum duration 45 ms.",
         ("9f7a18d2-83aa-4d99-b5f1-4ce28af08307",),
+        _PUBLIC_TERMS,
+        _BULLETS,
+        ("maintenance", "work order", "repair"),
     ),
     PrivacyCase(
         "normalized-alias",
-        "The exact private client alias is E\u0301toile Client. Keep that alias out of outbound text."
-        + _DURATION,
+        "Draft a three bullet point onboarding update for E\u0301toile Client. "
+        "Include Python, HTTP 200 and maximum duration 45 ms.",
         ("Étoile Client",),
+        _PUBLIC_TERMS,
+        _BULLETS,
+        ("onboarding", "onboard"),
     ),
 )
 
@@ -149,7 +205,7 @@ def answer_matches(actual: Any, expected: str | dict[str, int]) -> bool:
 
 
 def privacy_checks(case: PrivacyCase, core: Any) -> list[dict[str, Any]]:
-    """NFC/casefold comparison plus a mandatory nonempty retained task constraint."""
+    """Check independent entity, public-value, task-intent and format expectations."""
     from .live import _check
 
     usable = isinstance(core, str) and bool(core.strip())
@@ -159,12 +215,36 @@ def privacy_checks(case: PrivacyCase, core: Any) -> list[dict[str, Any]]:
     )
     return [
         _check("nonempty_task_core", usable),
-        _check(
-            "explicit_private_values_absent", usable and leaks == 0, matched_private_values=leaks
-        ),
+        _check("sensitive_values_absent", usable and leaks == 0, matched_sensitive_values=leaks),
         _check(
             "task_constraints_preserved",
-            usable and all(value.casefold() in folded for value in case.required_terms),
+            usable
+            and all(
+                unicodedata.normalize("NFC", value).casefold() in folded
+                for value in case.required_terms
+            ),
+        ),
+        _check(
+            "task_format_instruction_preserved",
+            usable
+            and (
+                not case.format_terms
+                or any(
+                    unicodedata.normalize("NFC", value).casefold() in folded
+                    for value in case.format_terms
+                )
+            ),
+        ),
+        _check(
+            "task_intent_preserved",
+            usable
+            and (
+                not case.task_terms
+                or any(
+                    unicodedata.normalize("NFC", value).casefold() in folded
+                    for value in case.task_terms
+                )
+            ),
         ),
     ]
 
@@ -172,6 +252,7 @@ def privacy_checks(case: PrivacyCase, core: Any) -> list[dict[str, Any]]:
 def _privacy_case(case: PrivacyCase, client: Any) -> dict[str, Any]:
     from .live import _check, _record_exception, safe_error
 
+    validate_untagged_prompt(case.prompt)
     started = time.perf_counter()
     row: dict[str, Any] = {
         "suite": f"challenge:privacy:{case.id}",
@@ -182,6 +263,9 @@ def _privacy_case(case: PrivacyCase, client: Any) -> dict[str, Any]:
         result = client.decompose(case.prompt)
         row["checks"].append(_check("decomposition_succeeded", result["status"] == "DECOMPOSED_OK"))
         row["checks"].extend(privacy_checks(case, result["task_core"]))
+        if any(check.get("matched_sensitive_values", 0) > 0 for check in row["checks"]):
+            row["severity"] = "P0"
+            row["reason_code"] = "ZERO_TAG_PRIVACY_LEAK"
     except Exception as exc:
         _record_exception(row, exc)
     finally:
@@ -280,7 +364,11 @@ def run_challenges(
                 )
             if selection in {"challenges", "challenge-privacy"}:
                 rows.extend(
-                    {**_privacy_case(case, client), "iteration": iteration + 1}
+                    {
+                        **_privacy_case(case, client),
+                        "privacy_variant": "untagged",
+                        "iteration": iteration + 1,
+                    }
                     for case in PRIVACY_CASES
                 )
     return rows

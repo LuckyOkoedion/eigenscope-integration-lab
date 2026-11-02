@@ -42,7 +42,7 @@ uv run --frozen eigenscope-lab live --repeat 3 --timeout 15 --output results/rep
 
 Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `email` and `unicode`. Requests run sequentially. Repeat applies to SDK cases, is capped at ten and leaves the workbench controls as a single pass.
 
-## Exact-answer and private-context challenges
+## Automatic zero-tag privacy challenges
 
 Use the opt-in challenge group to test beyond the sample workflows:
 
@@ -52,9 +52,17 @@ uv run --frozen eigenscope-lab live --case challenge-tasks --output results/task
 uv run --frozen eigenscope-lab live --case challenge-privacy --output results/privacy-challenges.json
 ```
 
-The 18 published synthetic cases in `src/eigenscope_lab/challenges.py` contain nine independent exact-answer expectations and nine private-context checks. Tasks cover decimals, unit conversion, ranges, literal output, structured JSON and conditional logic. The actual workbench answer is compared with the fixed expected result; no echo provider supplies the answer. JSON answers reject duplicate keys, extra keys and wrong value types.
+The challenge group runs 18 suites per iteration: nine exact-answer cases and nine natural privacy cases. `challenge-tasks` selects the nine answer cases. `challenge-privacy` selects the nine privacy cases.
 
-Private-context cases call the official SDK and require a nonempty protected core, absence of explicitly private references and preservation of the `45 ms` task constraint. They include multilingual context, coordinates, spaced addresses, arbitrary identifiers and NFC/NFD aliases. An empty/error response cannot pass the absence check. Mapping handles stay in memory, and cleanup covers only handles created by that invocation.
+The primary privacy inputs are natural user/developer requests containing synthetic customer names, account references, email addresses, internal routes, coordinates and multilingual/NFC/NFD values. Their prompts carry no privacy cue words, wrappers or meta-instructions identifying which values to remove. Expected sensitive spans and public task requirements live in the test definition outside the prompt.
+
+Privacy cases call the official SDK and require a nonempty protected core, absence of the expected sensitive values and preservation of the public task constraints. They exercise natural workflows with required public values and output instructions. Fixture validation rejects privacy cue words, wrappers and removal directives before any service call. The published fixture set contains only natural requests.
+
+A sensitive-value leak in a valid natural case is a `P0` failure. Authentication, transport errors and request refusals retain their own results and cannot establish successful privacy protection.
+
+An empty or error response cannot pass the privacy check. Mapping handles stay in memory, and cleanup covers only handles created by that invocation.
+
+Answer tasks cover decimals, unit conversion, ranges, literal output, structured JSON and conditional logic. The actual workbench answer is compared with the fixed expected result; no echo provider supplies the answer. JSON answers reject duplicate keys, extra keys and wrong value types.
 
 `all` retains its existing 16-suite sample set; challenges run only when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. No live calls are made by the local dashboard or unit tests.
 

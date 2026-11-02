@@ -80,7 +80,7 @@ Live testing submits the lab's published synthetic cases. It checks outbound con
 
 TypeScript users can follow the [TypeScript quickstart](typescript/README.md), which includes installation, tests, explicit credential binding and the live command.
 
-For exact-answer and explicitly private-context coverage beyond the sample workflows, run the optional [18-case challenge group](docs/live-testing.md#exact-answer-and-private-context-challenges):
+For exact-answer and automatic privacy coverage beyond the sample workflows, run the [zero-tag privacy challenge group](docs/live-testing.md#automatic-zero-tag-privacy-challenges). Its natural prompts require automatic sensitive-value removal while retaining the public task:
 
 ```sh
 uv run --frozen eigenscope-lab live --case challenges --output results/challenges.json
@@ -88,7 +88,7 @@ uv run --frozen eigenscope-lab live --case challenges --output results/challenge
 
 ## Validate model-runtime integration
 
-For teams operating their own models, the [model matrix runner](docs/model-integration.md) exercises real causal-model inference, automatic profile preparation and reuse through the SDK connector, and baseline versus integrated generation latency. Select your checkpoints, connect your deployment and inspect independent activation checks alongside p50/p95/p99 measurements.
+For teams operating their own models, the [model matrix runner](docs/model-integration.md) exercises real causal-model inference, automatic profile preparation and reuse through the SDK connector, and baseline versus integrated generation latency. Use natural prompts to evaluate sensitive-value removal, public-value preservation and output structure alongside independent activation checks and p50/p95/p99 measurements.
 
 Follow the guide to install the separate model environment, run the local GPT-2/Llama engine checks, and connect your actual models with the official `eigenscope_sdk.lab_connector:connect` adapter. Your application uses the same SDK's `connect_model(model)` entry point after the operator prepares its protected runtime. Model-inference dependencies stay out of the normal industry-scenario setup; private profiles stay in your protected runtime or private cache.
 
