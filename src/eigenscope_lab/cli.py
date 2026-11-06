@@ -47,6 +47,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Explicitly permit container interface binding; publish the port on host loopback only",
     )
+    visual.add_argument(
+        "--live",
+        action="store_true",
+        help="Execute browser scenario runs against the configured live EigenScope service using server-side ORTHOCORE_API_KEY",
+    )
+    visual.add_argument(
+        "--timeout",
+        type=float,
+        default=15.0,
+        help="Per-request timeout in seconds when --live is enabled",
+    )
     local = sub.add_parser(
         "run", help="Execute local external-system scenarios; no EigenScope calls"
     )
@@ -95,7 +106,19 @@ def main(argv: list[str] | None = None) -> int:
         from .web import serve
 
         try:
-            serve(host=args.host, port=args.port, allow_container=args.container)
+            serve(
+                host=args.host,
+                port=args.port,
+                allow_container=args.container,
+                live_mode=args.live,
+                timeout=args.timeout,
+            )
+        except ValueError:
+            parser.exit(
+                2,
+                "The dashboard server could not start. Check --host/--port, or verify "
+                "ORTHOCORE_BASE_URL and ORTHOCORE_API_KEY when using --live (omit --live to run offline).\n",
+            )
         except KeyboardInterrupt:
             return 0
         return 0

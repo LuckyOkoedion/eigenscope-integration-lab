@@ -22,7 +22,7 @@ Live tests send the fixed synthetic cases in `src/eigenscope_lab/fixtures.py` to
 3. Send the protected core through the OpenAI HTTP client to the local echo provider, which preserves the response text and symbol slots exactly.
 4. Rehydrate through the official SDK/API; check restored identifiers, mapping consumption and replay rejection.
 5. Scrub any remaining mapping created by the invocation, including after a provider failure.
-6. For robotics, telecom and Oil & Gas, exercise the scenario adapter with the returned core.
+6. For robotics, telecom, Oil & Gas and healthcare, exercise the scenario adapter with the returned core.
 
 The SDK uses its public transport hook for bounded HTTP requests, with redirects and environment proxies disabled. Authentication, policy, canonicalization and response validation remain in the official SDK. The runner tracks only its own returned mapping handles in memory, including handles from responses rejected by SDK validation.
 
@@ -64,7 +64,7 @@ An empty or error response cannot pass the privacy check. Mapping handles stay i
 
 Answer tasks cover decimals, unit conversion, ranges, literal output, structured JSON and conditional logic. The actual workbench answer is compared with the fixed expected result; no echo provider supplies the answer. JSON answers reject duplicate keys, extra keys and wrong value types.
 
-`all` runs the 17-suite sample set (`CASES` plus `workbench`); challenges and multimodal HTTP checks run only when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. No live calls are made by the local dashboard or unit tests.
+`all` runs the 20-suite sample set (`CASES`, `workbench` and `multimodal`); challenges run when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. Unit tests and default `serve` make no live calls; `serve --live` uses server-side `ORTHOCORE_API_KEY`.
 
 Timings identify SDK, local-provider and complete-workflow boundaries. SDK wall time includes serialization, network requests, service execution and response validation. Reports record the sample count; compare runs using the same client, configuration and environment.
 
@@ -78,7 +78,7 @@ npm run typecheck
 npm run live
 ```
 
-The server-side example reads `ORTHOCORE_API_KEY` and passes it as `bearerToken`. It runs coding, telecom, robotics and Oil & Gas cases with a deterministic provider echo. The Python runner separately exercises the local provider over HTTP. See the [TypeScript guide](../typescript/README.md).
+The server-side example reads `ORTHOCORE_API_KEY` and passes it as `bearerToken`. It runs coding, telecom, robotics, Oil & Gas, healthcare and multimodal HTTP cases with a deterministic provider echo. The Python runner separately exercises the local provider over HTTP. See the [TypeScript guide](../typescript/README.md).
 
 ## Read and share results
 

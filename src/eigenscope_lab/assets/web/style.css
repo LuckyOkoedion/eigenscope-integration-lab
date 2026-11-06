@@ -230,6 +230,7 @@ button:enabled:hover {
 }
 .sidebar-note p {
   margin-top: 7px;
+  overflow-wrap: anywhere;
 }
 .source-link {
   display: block;

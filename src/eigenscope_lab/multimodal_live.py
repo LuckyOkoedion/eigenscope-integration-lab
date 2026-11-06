@@ -14,7 +14,13 @@ import time
 from typing import Any
 
 from . import __version__
-from .live import ServiceResponseContractError, _check, _record_exception, safe_error
+from .live import (
+    ServiceResponseContractError,
+    _check,
+    _record_exception,
+    describe_suite_guidance,
+    safe_error,
+)
 from .simulators.multimodal import build_synthetic_media_bundle, sha256_prefixed
 
 CONTRACT_VERSION = "2026-10-18.v1"
@@ -327,6 +333,9 @@ def _run_modality_case(
         row["metrics"]["complete_modality_wall_ms"] = round(
             (time.perf_counter() - started) * 1000, 3
         )
+        guidance = describe_suite_guidance(checks)
+        if guidance:
+            row["guidance"] = guidance
     return row
 
 

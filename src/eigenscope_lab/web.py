@@ -34,6 +34,46 @@ class RunCancelled(Exception):
     """Internal checkpoint signal; simulation contexts retain their cleanup."""
 
 
+def _summarize_failed_checks(checks: list[dict[str, Any]], *, live_mode: bool) -> str:
+    failed = [check for check in checks if check.get("passed") is not True]
+    passed_any = any(check.get("passed") is True for check in checks)
+    if live_mode and any(
+        check.get("reason_code") == "SURFACE_DENIED_UNTIL_QUALIFIED"
+        or check.get("error_code") == "CORE_AUTHORITY_UNAVAILABLE"
+        or check.get("http_status") == 503
+        for check in failed
+    ):
+        prefix = (
+            "Local engine checks passed; live endpoint checks did not pass"
+            if passed_any
+            else "Live endpoint checks did not pass"
+        )
+        return f"{prefix} because this endpoint is not enabled on the configured service tier (HTTP 503)."
+    if live_mode and any(check.get("http_status") in {401, 403} for check in failed):
+        return "Live authorization checks did not pass. Verify ORTHOCORE_API_KEY permissions."
+    if live_mode and any(check.get("http_status") == 429 for check in failed):
+        return "Live rate-limit checks did not pass (HTTP 429). Wait briefly and run again."
+    privacy_ok = any(
+        check.get("name") == "private_values_absent_from_outbound_core"
+        and check.get("passed") is True
+        for check in checks
+    )
+    directive_flagged = any(
+        (
+            check.get("name") == "untrusted_directives_absent"
+            or str(check.get("name", "")).startswith("provided_task_core_respects_")
+        )
+        and check.get("passed") is not True
+        for check in failed
+    )
+    if live_mode and privacy_ok and directive_flagged:
+        return "Identifier separation and local safety checks passed; embedded instruction filtering did not pass under the active policy."
+    return (
+        "Some scenario checks did not pass. Review the highlighted items below "
+        "or download the run report for details."
+    )
+
+
 def _runner_for(scenario: str) -> Callable[..., dict[str, Any]]:
     # Import only the selected extra, so a coding-only installation stays useful.
     module_name = scenario.replace("-", "_")
@@ -44,8 +84,16 @@ def _runner_for(scenario: str) -> Callable[..., dict[str, Any]]:
 class LabSession:
     """One active simulation; bounded replay and history, containing no credentials."""
 
-    def __init__(self, runners: dict[str, Callable[..., dict[str, Any]]] | None = None) -> None:
+    def __init__(
+        self,
+        runners: dict[str, Callable[..., dict[str, Any]]] | None = None,
+        *,
+        live_mode: bool = False,
+        service_origin: str | None = None,
+    ) -> None:
         self._runners = runners
+        self.live_mode = bool(live_mode)
+        self.service_origin = service_origin if self.live_mode else None
         self.condition = threading.Condition(threading.RLock())
         self.events: deque[dict[str, Any]] = deque(maxlen=512)
         self.history: deque[dict[str, Any]] = deque(maxlen=20)
@@ -65,7 +113,13 @@ class LabSession:
 
     def snapshot(self) -> dict[str, Any]:
         with self.condition:
-            return {**self.state, "history": list(self.history), "event_id": self.sequence}
+            return {
+                **self.state,
+                "live_mode": self.live_mode,
+                "service_origin": self.service_origin,
+                "history": list(self.history),
+                "event_id": self.sequence,
+            }
 
     def _event(self, kind: str, data: dict[str, Any]) -> None:
         self.sequence += 1
@@ -135,7 +189,7 @@ class LabSession:
             passed = bool(checks) and all(check.get("passed") is True for check in checks)
             status = "cancelled" if self.stop.is_set() else "completed" if passed else "failed"
             if status == "failed":
-                error = "Some scenario checks did not pass. Review the contract checks and download the run report for details."
+                error = _summarize_failed_checks(checks, live_mode=self.live_mode)
         except RunCancelled:
             status = "cancelled"
         except Exception:
@@ -267,6 +321,8 @@ class LabHandler(BaseHTTPRequestHandler):
         if route.path in assets:
             name, content_type = assets[route.path]
             self._send(200, (ASSET_ROOT / name).read_bytes(), content_type)
+        elif route.path == "/favicon.ico":
+            self._send(204, b"", "image/x-icon")
         elif route.path == "/api/state":
             self._json(200, self.server.session.snapshot())
         elif route.path == "/api/events":
@@ -374,10 +430,14 @@ def create_server(
     port: int = 8765,
     *,
     allow_container: bool = False,
+    live_mode: bool = False,
+    timeout: float = 15.0,
     session: LabSession | None = None,
 ) -> LabHTTPServer:
     if type(allow_container) is not bool:
         raise ValueError("Container binding must be explicitly enabled with a boolean")
+    if type(live_mode) is not bool:
+        raise ValueError("Live mode must be explicitly enabled with a boolean")
     allowed_hosts = {"127.0.0.1", "localhost"}
     if allow_container:
         allowed_hosts.add("0.0.0.0")
@@ -386,13 +446,38 @@ def create_server(
     if type(port) is not int or not 0 <= port <= 65535:
         raise ValueError("Port must be an integer from 0 to 65535")
     bind_host = "0.0.0.0" if host == "0.0.0.0" else "127.0.0.1"
-    return LabHTTPServer(bind_host, port, session or LabSession())
+    if session is None:
+        if live_mode:
+            from .live import build_live_web_runners
+
+            origin, runners = build_live_web_runners(timeout=timeout)
+            session = LabSession(runners, live_mode=True, service_origin=origin)
+        else:
+            session = LabSession()
+    return LabHTTPServer(bind_host, port, session)
 
 
-def serve(host: str = "127.0.0.1", port: int = 8765, *, allow_container: bool = False) -> None:
+def serve(
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    *,
+    allow_container: bool = False,
+    live_mode: bool = False,
+    timeout: float = 15.0,
+) -> None:
     """Serve the local dashboard until interrupted; no browser is opened silently."""
-    with create_server(host, port, allow_container=allow_container) as server:
-        print(f"EigenScope Integration Lab: http://127.0.0.1:{server.server_port}", flush=True)
+    with create_server(
+        host, port, allow_container=allow_container, live_mode=live_mode, timeout=timeout
+    ) as server:
+        mode = (
+            f"live service ({server.session.service_origin})"
+            if server.session.live_mode
+            else "local simulator (offline)"
+        )
+        print(
+            f"EigenScope Integration Lab [{mode}]: http://127.0.0.1:{server.server_port}",
+            flush=True,
+        )
         try:
             server.serve_forever(poll_interval=0.1)
         except KeyboardInterrupt:

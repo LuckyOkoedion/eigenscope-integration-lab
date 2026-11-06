@@ -246,12 +246,12 @@ class TwoCompartmentPatient:
         lab_time = self.t_h if lab_time_h is None else _number(lab_time_h, "lab_time_h")
         if not 0.0 <= lab_time <= self.t_h:
             raise ClinicalOrderRejected("Lab timestamp must be nonnegative and not in the future")
-        published = (
-            self.central_conc_mg_l
+        explicit_published = (
+            None
             if published_conc_mg_l is None
             else _number(published_conc_mg_l, "published_conc_mg_l")
         )
-        if published <= 0.0:
+        if explicit_published is not None and explicit_published <= 0.0:
             raise ClinicalOrderRejected("Published serum concentration must be positive")
         if self.central_conc_mg_l >= self.config.toxic_ceiling_mg_l:
             self._trip("TOXIC_CONCENTRATION_CEILING", self.t_h)
@@ -318,6 +318,7 @@ class TwoCompartmentPatient:
             self.max_mass_balance_error_mg, abs(total_now - expected_total)
         )
         effective_rate = 0.0 if self.safety_clamp else self.rate_mg_h
+        published = self.central_conc_mg_l if explicit_published is None else explicit_published
         return {
             "phase_time_h": self.t_h,
             "central_conc_mg_l": self.central_conc_mg_l,
@@ -664,13 +665,18 @@ def run_healthcare(
     ) -> None:
         nonlocal global_t_h
         phase_start = subject.t_h
+        frozen_conc: float | None = None
         for _ in range(count):
             lab_time = subject.t_h if freeze_lab_at_h is None else min(subject.t_h, freeze_lab_at_h)
+            if freeze_lab_at_h is not None and subject.t_h >= freeze_lab_at_h - 1e-12:
+                if frozen_conc is None:
+                    frozen_conc = subject.central_conc_mg_l
+            reported_conc = false_conc_mg_l if false_conc_mg_l is not None else frozen_conc
             frame = subject.advance(
                 0.25,
                 renal_factor=renal_factor,
                 lab_time_h=lab_time,
-                published_conc_mg_l=false_conc_mg_l,
+                published_conc_mg_l=reported_conc,
             )
             global_t_h += 0.25
             frame.update(

@@ -144,6 +144,7 @@ def test_loopback_routes_reject_invalid_cross_origin_and_credential_fields():
         assert client.get(base).status_code == 200
         assert client.get(base + "/app.js").status_code == 200
         assert client.get(base + "/style.css").status_code == 200
+        assert client.get(base + "/favicon.ico").status_code == 204
         assert client.get(base + "/../../etc/passwd").status_code == 404
         assert (
             client.get(base + "/api/state", headers={"Host": "attacker.invalid"}).status_code == 403
@@ -271,3 +272,38 @@ def test_explicit_container_binding_keeps_loopback_host_and_origin_boundary():
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_live_mode_snapshot_and_missing_key_guard(monkeypatch):
+    monkeypatch.delenv("ORTHOCORE_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="ORTHOCORE_API_KEY"):
+        create_server("127.0.0.1", 0, live_mode=True)
+
+    session = LabSession(
+        {
+            "multimodal": lambda seed=7: {
+                "checks": [
+                    {"name": "local_wav", "passed": True},
+                    {
+                        "name": "live_v1_audio_actual_multimodal_decomposition_succeeded",
+                        "passed": False,
+                        "http_status": 503,
+                        "error_code": "CORE_AUTHORITY_UNAVAILABLE",
+                        "reason_code": "SURFACE_DENIED_UNTIL_QUALIFIED",
+                    },
+                ]
+            }
+        },
+        live_mode=True,
+        service_origin="https://service.example.invalid",
+    )
+    snap0 = session.snapshot()
+    assert snap0["live_mode"] is True
+    assert snap0["service_origin"] == "https://service.example.invalid"
+    session.start("multimodal", 7, 0)
+    wait_finished(session)
+    snap1 = session.snapshot()
+    assert snap1["status"] == "failed"
+    assert "did not pass" in snap1["error"]
+    assert "HTTP 503" in snap1["error"]
+    session.close()

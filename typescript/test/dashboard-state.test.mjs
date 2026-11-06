@@ -158,3 +158,63 @@ test("SSE envelope revision takes precedence over a stale embedded revision", ()
   assert.equal(app.read("lastRevision"), 12);
   assert.equal(app.get("run-status").textContent, "Stopped");
 });
+
+test("multimodal terminal video frame displays OCVC modality and frame dimensions", () => {
+  const app = dashboard();
+  app.emit("snapshot", 1, {
+    ...snapshot("completed", 1, 1),
+    scenario: "multimodal",
+    frame: {
+      phase: "tamper-and-ceiling-controls",
+      modality: "video_clip",
+      container_bytes: 147472,
+      video_frame_count: 6,
+      width: 96,
+      height: 64,
+      rejected_controls: 6,
+      expected_rejected_controls: 6,
+      exact_roundtrip: true,
+      active_stage: "VERIFIED",
+    },
+  });
+  const cards = app.get("metrics").children;
+  assert.equal(cards[0].children[1].textContent, "Video (OCVC)");
+  assert.equal(cards[1].children[2].textContent, "6 frames · 96×64 RGBA");
+});
+
+test("live mode indicator and check display formatting", () => {
+  const app = dashboard();
+  app.emit("snapshot", 1, {
+    ...snapshot("failed", 1, 1),
+    live_mode: true,
+    service_origin: "https://service.example.invalid",
+    scenario: "multimodal",
+    result: {
+      checks: [
+        {
+          name: "consumed_ticket_reuse_denied",
+          passed: true,
+          http_status: 410,
+          error_code: "VAULT_TICKET_SCRUBBED",
+        },
+        {
+          name: "live_v1_audio_actual_multimodal_decomposition_succeeded",
+          passed: false,
+          http_status: 503,
+          error_code: "CORE_AUTHORITY_UNAVAILABLE",
+          reason_code: "SURFACE_DENIED_UNTIL_QUALIFIED",
+        },
+      ],
+    },
+  });
+  assert.equal(app.get("mode-label").textContent, "Live EigenScope API");
+  const items = app.get("checks").children;
+  assert.equal(
+    items[0].children[1].textContent,
+    "Single-use vault ticket replay blocked — verified HTTP 410 single-use enforcement",
+  );
+  assert.equal(
+    items[1].children[1].textContent,
+    "Live audio endpoint (/v1/decompose/audio) — tier access required · HTTP 503",
+  );
+});

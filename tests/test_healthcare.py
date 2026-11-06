@@ -125,3 +125,13 @@ def test_loopback_fhir_r4_contract_and_full_healthcare_suite(patient):
     assert any(
         c["name"] == "provided_task_core_respects_clinical_boundary" for c in result["checks"]
     )
+    fresh_frames = [
+        f
+        for f in frames
+        if f["phase"] in {"baseline-infusion", "reviewed-dose-titration", "rejected-orders"}
+    ]
+    assert all(f["published_conc_mg_l"] == f["central_conc_mg_l"] for f in fresh_frames)
+    stale_frozen = [f for f in frames if f["phase"] == "stale-lab-hold" and f["lab_age_h"] > 0.0]
+    assert stale_frozen
+    assert all(abs(f["published_conc_mg_l"] - 18.0) < 1e-9 for f in stale_frozen)
+    assert stale_frozen[-1]["central_conc_mg_l"] < stale_frozen[-1]["published_conc_mg_l"]

@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>EigenScope Integration Lab</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f6d52'/%3E%3Ctext x='16' y='22' font-family='system-ui,sans-serif' font-size='18' font-weight='700' text-anchor='middle' fill='%23ffffff'%3EE%3C/text%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="/style.css" />
     <script src="/app.js" defer></script>
   </head>
@@ -16,7 +20,8 @@
         ><span>EigenScope <span class="brand-light">Integration Lab</span></span></a
       >
       <div class="top-actions">
-        <span class="local-label"><span class="dot"></span>Local workspace</span
+        <span class="local-label"
+          ><span class="dot"></span><span id="mode-label">Local simulator (offline)</span></span
         ><button id="theme" class="quiet" type="button">Dark mode</button>
       </div>
     </header>
@@ -77,7 +82,10 @@
           </nav>
           <div class="sidebar-note">
             <strong>See each system in action.</strong>
-            <p>Choose a scenario and select Run. Sample data is included; no API key is needed.</p>
+            <p id="sidebar-mode-note">
+              Choose a scenario and select Run. Start with --live to execute against the live
+              EigenScope service.
+            </p>
           </div>
           <a
             class="source-link"
@@ -202,7 +210,10 @@
             The view follows measurements from the running simulator. Playback pace adds display
             delay; simulation time and elapsed wall time are shown separately.
           </p>
-          <p>For authenticated EigenScope SDK/API tests, use the documented CLI live mode.</p>
+          <p id="footer-mode-note">
+            For live EigenScope SDK/API execution in this browser, start with
+            <code>eigenscope-lab serve --live</code>.
+          </p>
         </footer>
       </main>
     </div>

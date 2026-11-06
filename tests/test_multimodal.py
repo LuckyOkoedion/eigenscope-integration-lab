@@ -86,6 +86,12 @@ def test_run_multimodal_passes_all_nine_checks():
     assert outcome(result) == "PASS"
     assert len(result["checks"]) == 9
     assert len(frames) == result["metrics"]["frame_count"] == 11
+    video_frames = [f for f in frames if f["modality"] == "video_clip"]
+    assert video_frames
+    assert all(
+        f.get("video_frame_count") == 6 and f.get("width") == 96 and f.get("height") == 64
+        for f in video_frames
+    )
 
 
 class _FakeResponse:

@@ -78,6 +78,101 @@ function words(value) {
     .replaceAll("_", " ")
     .replaceAll("-", " ");
 }
+const CHECK_LABELS = {
+  actual_decomposition_succeeded: "Live service decomposition completed",
+  private_values_absent_from_outbound_core: "Sensitive identifiers removed before model call",
+  task_terms_preserved: "Required task parameters preserved",
+  untrusted_directives_absent: "Embedded untrusted instructions filtered (domain policy)",
+  provider_received_only_protected_core: "Model provider received protected task text only",
+  provider_preserved_symbols_exactly: "Placeholder symbols preserved across model output",
+  identifiers_restored_and_ticket_consumed:
+    "Exact identifiers restored & single-use ticket scrubbed",
+  masked_identifiers_returned_locally: "Protected values restored locally",
+  consumed_ticket_reuse_denied: "Single-use vault ticket replay blocked",
+  owned_ticket_cleanup: "Temporary vault mapping cleaned up",
+  workflow_completed: "Live service request completed",
+  provided_task_core_respects_safety_boundary: "Outbound task text cleared robotics command policy",
+  provided_task_core_respects_operating_boundary:
+    "Outbound task text cleared operating command policy",
+  provided_task_core_respects_clinical_boundary:
+    "Outbound task text cleared clinical command policy",
+  live_v1_audio_actual_multimodal_decomposition_succeeded:
+    "Live audio endpoint (/v1/decompose/audio)",
+  live_v1_image_actual_multimodal_decomposition_succeeded:
+    "Live image endpoint (/v1/decompose/image)",
+  live_v1_video_actual_multimodal_decomposition_succeeded:
+    "Live video endpoint (/v1/decompose/video)",
+  live_v1_audio_authorized_multimodal_access: "Live audio endpoint authorization",
+  live_v1_image_authorized_multimodal_access: "Live image endpoint authorization",
+  live_v1_video_authorized_multimodal_access: "Live video endpoint authorization",
+};
+function sentenceCase(value) {
+  const plain = words(value).trim();
+  return plain ? plain[0].toUpperCase() + plain.slice(1) : "";
+}
+function formatCheckDisplay(check) {
+  const rawName = String(check.name || "");
+  const label = CHECK_LABELS[rawName] || sentenceCase(rawName);
+  if (check.passed) {
+    return rawName.includes("reuse_denied") && check.http_status === 410
+      ? `${label} — verified HTTP 410 single-use enforcement`
+      : label;
+  }
+  if (
+    check.reason_code === "SURFACE_DENIED_UNTIL_QUALIFIED" ||
+    check.error_code === "CORE_AUTHORITY_UNAVAILABLE" ||
+    check.http_status === 503
+  ) {
+    return `${label} — tier access required · HTTP 503`;
+  }
+  if (check.http_status === 401 || check.http_status === 403) {
+    return `${label} — check API key scope · HTTP ${check.http_status}`;
+  }
+  if (check.http_status === 429) {
+    return `${label} — rate limit reached · HTTP 429`;
+  }
+  if (check.http_status === 422) {
+    return `${label} — policy threshold review · HTTP 422`;
+  }
+  if (
+    rawName === "untrusted_directives_absent" ||
+    rawName.startsWith("provided_task_core_respects_")
+  ) {
+    return `${label} — configure domain instruction policy`;
+  }
+  if (Number.isInteger(check.http_status)) {
+    return `${label} — HTTP ${check.http_status}`;
+  }
+  return label;
+}
+function modalityLabel(value) {
+  return (
+    {
+      audio_wav: "Audio (WAV)",
+      image_frame: "Image (PNG)",
+      video_clip: "Video (OCVC)",
+    }[value] || words(value)
+  );
+}
+function modalityContainerNote(payload) {
+  if (payload.modality === "video_clip") {
+    if (Number.isInteger(payload.video_frame_index) && payload.video_frame_count) {
+      return `Frame ${payload.video_frame_index + 1} of ${payload.video_frame_count}`;
+    }
+    if (payload.video_frame_count && payload.width && payload.height) {
+      return `${payload.video_frame_count} frames · ${payload.width}×${payload.height} RGBA`;
+    }
+    return payload.video_frame_count
+      ? `${payload.video_frame_count} RGBA frames`
+      : "OCVC v1 RGBA container";
+  }
+  if (payload.modality === "image_frame") {
+    return payload.width && payload.height
+      ? `${payload.width}×${payload.height} RGBA`
+      : "CRC-32 RGBA PNG";
+  }
+  return "16 kHz PCM16 mono";
+}
 function activityItem(text) {
   if (activity[0] === text) return;
   activity.unshift(text);
@@ -283,20 +378,22 @@ function updateMetrics() {
     ]);
   } else if (selected === "multimodal") {
     metrics([
-      ["Active modality", words(frame.modality), `Stage: ${words(frame.active_stage)}`],
-      [
-        "Container size",
-        `${frame.container_bytes ?? 0} bytes`,
-        frame.video_frame_count
-          ? `Frame ${(frame.video_frame_index ?? 0) + 1} of ${frame.video_frame_count}`
-          : frame.width
-            ? `${frame.width}×${frame.height} RGBA`
-            : "16 kHz PCM16 mono",
-      ],
+      ["Active modality", modalityLabel(frame.modality), `Stage: ${words(frame.active_stage)}`],
+      ["Container size", `${frame.container_bytes ?? 0} bytes`, modalityContainerNote(frame)],
       [
         "SHA-256 round-trip",
-        frame.exact_roundtrip ? "Bit-exact" : "Masked view",
-        frame.exact_roundtrip ? "Matches original container" : "Sensitive region zeroed",
+        frame.live_tier_gated || frame.live_failed
+          ? "Local verified"
+          : frame.exact_roundtrip
+            ? "Bit-exact"
+            : "Masked view",
+        frame.live_tier_gated
+          ? "Live endpoint requires tier access"
+          : frame.live_failed
+            ? "Review live service check below"
+            : frame.exact_roundtrip
+              ? "Matches original container"
+              : "Sensitive region zeroed",
       ],
       [
         "Negative controls",
@@ -334,6 +431,7 @@ function updateMetrics() {
       ],
     ]);
   } else if (selected === "tools") {
+    const liveSanitize = observedCheck("untrusted_directives_absent");
     metrics([
       [
         "Tool discovery",
@@ -347,11 +445,19 @@ function updateMetrics() {
       ],
       [
         "Injected tool text",
-        observedOutcome(
-          "untrusted_injection_fixture_reaches_boundary",
-          "Delivered as untrusted data",
-        ),
-        "Sanitization is tested separately in live mode",
+        liveSanitize
+          ? liveSanitize.passed
+            ? "Filtered live"
+            : "Policy review"
+          : observedOutcome(
+              "untrusted_injection_fixture_reaches_boundary",
+              "Delivered as untrusted data",
+            ),
+        liveSanitize
+          ? liveSanitize.passed
+            ? "Protected via sanitize_tool_output"
+            : "Default profile · add tool policy gate"
+          : "Sanitization is tested separately in live mode",
       ],
       [
         "Subprocess cleanup",
@@ -436,8 +542,9 @@ function selectScenario(name) {
     $("download").hidden = true;
     $("frame-count").textContent = "0 frames received";
     $("reset").disabled = true;
-    $("run-guidance").textContent =
-      `Select Run ${definition.title.toLowerCase()} to begin. Sample data is included; no API key is needed.`;
+    $("run-guidance").textContent = state.live_mode
+      ? `Select Run ${definition.title.toLowerCase()} to execute live EigenScope SDK/API + local engine checks.`
+      : `Select Run ${definition.title.toLowerCase()} to begin. Sample data is included; no API key is needed.`;
     showError("");
   }
   updateMetrics();
@@ -514,6 +621,15 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
     activityItem(`Run ${next.run_id} started with seed ${next.seed ?? 7}.`);
   }
   state = next;
+  $("mode-label").textContent = state.live_mode
+    ? "Live EigenScope API"
+    : "Local simulator (offline)";
+  $("sidebar-mode-note").textContent = state.live_mode
+    ? `Connected to ${state.service_origin || "live EigenScope service"}. Select Run to execute live SDK/API and engine checks.`
+    : "Choose a scenario and select Run. Start with --live to execute against the live EigenScope service.";
+  $("footer-mode-note").textContent = state.live_mode
+    ? `Connected to ${state.service_origin || "live EigenScope service"} using server-side credentials; secrets and vault tickets are never exported.`
+    : "For live EigenScope SDK/API execution in this browser, start with eigenscope-lab serve --live.";
   if (next.scenario && next.scenario !== selected) selectScenario(next.scenario);
   const busy = ["running", "cancelling"].includes(state.status);
   $("start").disabled = busy;
@@ -557,16 +673,20 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
   }
   const checks = state.result?.checks || [];
   const passedCount = checks.filter((check) => check.passed).length;
+  const idleNote = state.live_mode
+    ? `Select Run ${definitions[selected].title.toLowerCase()} to execute live EigenScope SDK/API + local engine checks.`
+    : `Select Run ${definitions[selected].title.toLowerCase()} to begin. Sample data is included; no API key is needed.`;
   const guidance = {
-    idle: `Select Run ${definitions[selected].title.toLowerCase()} to begin. Sample data is included; no API key is needed.`,
-    running:
-      "Running locally. Stop ends the run at the next checkpoint and cleans up its resources.",
+    idle: idleNote,
+    running: state.live_mode
+      ? "Executing live EigenScope SDK/API calls and local engine verification…"
+      : "Running locally. Stop ends the run at the next checkpoint and cleans up its resources.",
     cancelling: "Stopping… waiting for the current operation and cleanup to finish.",
     cancelled: "Run stopped. Select Run again to complete all scenario checks.",
     completed: `All ${checks.length} checks passed. Review the results below or download the run report.`,
     failed: checks.length
-      ? `${checks.length - passedCount} of ${checks.length} checks need attention. Review the results below or download the report.`
-      : "The run could not finish. Check the error message and local terminal, then try again.",
+      ? `${passedCount} of ${checks.length} checks passed (${checks.length - passedCount} flagged for review). Inspect the summary below or download the report.`
+      : "The run could not finish. Check the message below and local terminal, then try again.",
   };
   $("run-guidance").textContent = guidance[state.status] || guidance.idle;
   $("check-empty").textContent = busy
@@ -587,7 +707,7 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
         text = document.createElement("span");
       mark.className = `check-mark${check.passed ? "" : " failed"}`;
       mark.textContent = check.passed ? "✓" : "×";
-      text.textContent = words(check.name);
+      text.textContent = formatCheckDisplay(check);
       li.append(mark, text);
       return li;
     }),
@@ -907,19 +1027,19 @@ function drawHealthcare(compact) {
     danger = color("--danger");
   const clamped = Boolean(frame.safety_clamp),
     cy = compact ? 145 : 155;
-  const pumpX = compact ? 92 : 170,
+  const pumpX = compact ? 104 : 170,
     centralX = W / 2,
-    renalX = compact ? W - 92 : W - 170;
-  text("ICU IV PHARMACOKINETICS · HL7 FHIR R4 GATE", 28, 38, compact ? 22 : 21, ink);
+    renalX = compact ? W - 104 : W - 170;
+  text("ICU IV PHARMACOKINETICS · HL7 FHIR R4 GATE", 28, 38, compact ? 21 : 21, ink);
   text(
     `${frame.phase === "stale-lab-hold" ? "New subject · stale-lab test" : words(frame.phase)} · ${number(frame.t, 2)} h simulated`,
     28,
     73,
-    compact ? 23 : 19,
+    compact ? 22 : 19,
     muted,
   );
   line(pumpX + 32, cy, centralX - 84, cy, clamped ? muted : accent, 5);
-  line(centralX + 84, cy, renalX - 30, cy, frame.renal_factor > 0.3 ? accent : danger, 5);
+  line(centralX + 84, cy, renalX - 26, cy, frame.renal_factor > 0.3 ? accent : danger, 5);
   circle(
     pumpX,
     cy,
@@ -944,13 +1064,15 @@ function drawHealthcare(compact) {
     frame.renal_factor > 0.3 ? color("--accent-soft") : color("--danger-soft"),
     frame.renal_factor > 0.3 ? accent : danger,
   );
-  text("IV Pump", pumpX, cy + 83, compact ? 23 : 19, ink, "center");
-  text("Central + Tissue", centralX, cy + 83, compact ? 23 : 19, ink, "center");
+  text("IV Pump", pumpX, cy + 83, compact ? 22 : 19, ink, "center");
+  text("Central + Tissue", centralX, cy + 83, compact ? 22 : 19, ink, "center");
   text(
-    `Clearance · ${number(frame.clearance_l_h, 1)} L/h`,
+    compact
+      ? `CL · ${number(frame.clearance_l_h, 1)} L/h`
+      : `Clearance · ${number(frame.clearance_l_h, 1)} L/h`,
     renalX,
     cy + 83,
-    compact ? 22 : 19,
+    compact ? 20 : 19,
     ink,
     "center",
   );
@@ -972,7 +1094,7 @@ function drawHealthcare(compact) {
     `Toxic ceiling ${number(frame.toxic_ceiling_mg_l, 1)} mg/L`,
     x,
     y - 13,
-    compact ? 22 : 18,
+    compact ? 21 : 18,
     danger,
   );
   trace.forEach((sample, i) => {
@@ -1000,12 +1122,19 @@ function drawHealthcare(compact) {
       );
   });
   ctx.restore();
-  text("True serum", x + width - 210, y + height - 10, compact ? 20 : 15, color("--chart"));
+  text(
+    "True serum",
+    x + width - (compact ? 172 : 138),
+    y + height - 10,
+    compact ? 18 : 15,
+    color("--chart"),
+    "right",
+  );
   text(
     "Published lab",
-    x + width - 18,
+    x + width - 14,
     y + height - 10,
-    compact ? 20 : 15,
+    compact ? 18 : 15,
     color("--warning"),
     "right",
   );
@@ -1015,7 +1144,7 @@ function drawHealthcare(compact) {
       : "Clinician sign-off & concentration monitor active",
     x,
     compact ? 420 : 470,
-    compact ? 22 : 20,
+    compact ? 21 : 20,
     clamped ? danger : accent,
   );
   canvas.setAttribute(
@@ -1028,12 +1157,20 @@ function drawMultimodal(compact) {
     ink = color("--ink"),
     muted = color("--muted"),
     accent = color("--accent");
-  text("MULTIMODAL CONTAINERS · MASKING & SHA-256 RESTORATION", 28, 38, compact ? 21 : 20, ink);
   text(
-    `${words(frame.phase)} · ${words(frame.modality)} · ${frame.container_bytes || 0} bytes`,
+    compact
+      ? "MULTIMODAL · MASKING & SHA-256 RESTORE"
+      : "MULTIMODAL CONTAINERS · MASKING & SHA-256 RESTORATION",
+    28,
+    38,
+    20,
+    ink,
+  );
+  text(
+    `${words(frame.phase)} · ${modalityLabel(frame.modality)} · ${frame.container_bytes || 0} bytes`,
     28,
     72,
-    compact ? 22 : 18,
+    compact ? 19 : 18,
     muted,
   );
   const cards = [
@@ -1044,9 +1181,22 @@ function drawMultimodal(compact) {
   const order = { audio_wav: 0, image_frame: 1, video_clip: 2 };
   const currentIdx = order[frame.modality] ?? 0;
   cards.forEach(([title, mod, sub], idx) => {
-    const done = idx < currentIdx || (idx === currentIdx && frame.exact_roundtrip);
+    const liveMod = frame.live_modality_status?.[mod];
+    const liveFlagged = Boolean(liveMod && liveMod !== "PASSED");
+    const liveAdvisory = liveMod === "TIER_GATED" || liveMod === "AUTH_REQUIRED";
+    const done = liveMod
+      ? liveMod === "PASSED"
+      : idx < currentIdx || (idx === currentIdx && frame.exact_roundtrip);
     const active = idx === currentIdx;
-    const stroke = done ? accent : active ? color("--chart") : color("--line");
+    const stroke = liveFlagged
+      ? liveAdvisory
+        ? color("--warning")
+        : color("--danger")
+      : done
+        ? accent
+        : active
+          ? color("--chart")
+          : color("--line");
     if (compact) {
       const y = 104 + idx * 88;
       ctx.fillStyle = color("--surface");
@@ -1059,7 +1209,19 @@ function drawMultimodal(compact) {
       text(title, 48, y + 30, 24, ink);
       text(sub, 48, y + 56, 19, muted);
       text(
-        done ? "SHA-256 ✓" : active ? "Masking…" : "Pending",
+        liveMod === "TIER_GATED"
+          ? "Tier gated"
+          : liveMod === "AUTH_REQUIRED"
+            ? "API key"
+            : liveFlagged
+              ? "Review"
+              : liveMod === "PASSED"
+                ? "LIVE ✓"
+                : done
+                  ? "SHA-256 ✓"
+                  : active
+                    ? "Masking…"
+                    : "Pending",
         W - 48,
         y + 42,
         21,
@@ -1081,10 +1243,22 @@ function drawMultimodal(compact) {
       text(title, x + 24, y + 76, 25, ink);
       text(sub, x + 24, y + 110, 16, muted);
       text(
-        done ? "Bit-exact SHA-256 restored" : active ? "Span masking active" : "Queued",
+        liveMod === "TIER_GATED"
+          ? "Local SHA-256 ✓ · Live tier gated"
+          : liveMod === "AUTH_REQUIRED"
+            ? "Local SHA-256 ✓ · Check API key"
+            : liveFlagged
+              ? "Local SHA-256 ✓ · Review live"
+              : liveMod === "PASSED"
+                ? "Live & local SHA-256 verified"
+                : done
+                  ? "Bit-exact SHA-256 restored"
+                  : active
+                    ? "Span masking active"
+                    : "Queued",
         x + 24,
         y + 152,
-        17,
+        16,
         stroke,
       );
       if (idx < 2) line(x + cardW + 6, y + 92, x + cardW + 29, y + 92, color("--line"), 3);
@@ -1583,17 +1757,22 @@ function drawWorkflow(compact) {
       text(note, x + 20, 235, 14, muted);
       if (i < 3) line(x + 232, 160, x + 255, 160, color("--line"), 3);
     });
-    if (!isCoding)
+    if (!isCoding) {
+      const liveToolCheck = observedCheck("untrusted_directives_absent");
       text(
-        observedCheck("untrusted_injection_fixture_reaches_boundary")
-          ? "Injected text delivered as untrusted data · sanitization is a separate live check"
-          : "Tool-result trust is separate from permission to call a tool",
+        liveToolCheck
+          ? liveToolCheck.passed
+            ? "Live sanitize_tool_output filtered embedded instructions"
+            : "Identifiers protected · pair with domain policy for embedded instructions"
+          : observedCheck("untrusted_injection_fixture_reaches_boundary")
+            ? "Injected text delivered as untrusted data · sanitization is a separate live check"
+            : "Tool-result trust is separate from permission to call a tool",
         40,
         290,
         18,
-        color("--warning"),
+        liveToolCheck ? (liveToolCheck.passed ? accent : color("--warning")) : color("--warning"),
       );
-    else
+    } else
       text("The observed code change appears below after the patch is tested.", 40, 290, 18, muted);
   }
   canvas.setAttribute(

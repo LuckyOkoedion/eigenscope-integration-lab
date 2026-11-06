@@ -14,11 +14,12 @@ import re
 import time
 import urllib.error
 import urllib.parse
+from collections.abc import Callable
 from contextlib import closing
 from typing import Any
 
 from .fixtures import ARITHMETIC_CASES, CASES, ContractCase
-from .reporting import percentiles, report
+from .reporting import outcome, percentiles, report
 
 
 class ServiceResponseContractError(Exception):
@@ -141,6 +142,39 @@ def _record_exception(row: dict[str, Any], exc: Exception) -> None:
     row["checks"].append(_check("workflow_completed", False, **detail))
 
 
+def describe_suite_guidance(checks: list[dict[str, Any]]) -> str | None:
+    if not checks or all(check.get("passed") is True for check in checks):
+        return None
+    failed = [check for check in checks if check.get("passed") is not True]
+    if any(
+        check.get("reason_code") == "SURFACE_DENIED_UNTIL_QUALIFIED"
+        or check.get("error_code") == "CORE_AUTHORITY_UNAVAILABLE"
+        or check.get("http_status") == 503
+        for check in failed
+    ):
+        return "Endpoint unavailable on the configured service tier (HTTP 503)."
+    if any(check.get("http_status") in {401, 403} for check in failed):
+        return "Request was not authorized (HTTP 401/403). Verify ORTHOCORE_API_KEY permissions."
+    if any(check.get("http_status") == 429 for check in failed):
+        return "Request was rate-limited (HTTP 429). Retry shortly."
+    privacy_ok = any(
+        check.get("name") == "private_values_absent_from_outbound_core"
+        and check.get("passed") is True
+        for check in checks
+    )
+    directive_flagged = any(
+        (
+            check.get("name") == "untrusted_directives_absent"
+            or str(check.get("name", "")).startswith("provided_task_core_respects_")
+        )
+        and check.get("passed") is not True
+        for check in failed
+    )
+    if privacy_ok and directive_flagged:
+        return "Identifier separation passed; embedded instruction filtering did not pass under the active policy."
+    return "Review the flagged checks against your service configuration."
+
+
 def evaluate_core(case: ContractCase, core: str) -> list[dict[str, Any]]:
     folded = core.casefold()
     return [
@@ -162,7 +196,13 @@ def evaluate_core(case: ContractCase, core: str) -> list[dict[str, Any]]:
 
 
 def _sdk_case(
-    case: ContractCase, *, client: Any, provider: Any, provider_server: Any, seed: int
+    case: ContractCase,
+    *,
+    client: Any,
+    provider: Any,
+    provider_server: Any,
+    seed: int,
+    on_frame: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {
         "suite": f"sdk:{case.id}",
@@ -252,19 +292,19 @@ def _sdk_case(
             if case.domain == "robotics":
                 from .simulators.robotics import run_robotics
 
-                external = run_robotics(seed=seed, task_core=core)
+                external = run_robotics(seed=seed, task_core=core, on_frame=on_frame)
             elif case.domain == "telecom":
                 from .simulators.telecom import run_telecom
 
-                external = run_telecom(seed=seed, task_core=core)
+                external = run_telecom(seed=seed, task_core=core, on_frame=on_frame)
             elif case.domain == "healthcare":
                 from .simulators.healthcare import run_healthcare
 
-                external = run_healthcare(seed=seed, task_core=core)
+                external = run_healthcare(seed=seed, task_core=core, on_frame=on_frame)
             else:
                 from .simulators.oil_gas import run_oil_gas
 
-                external = run_oil_gas(seed=seed, task_core=core)
+                external = run_oil_gas(seed=seed, task_core=core, on_frame=on_frame)
             row["external_system"] = external
             checks.append(
                 _check(
@@ -299,6 +339,9 @@ def _sdk_case(
         row["metrics"]["complete_scenario_wall_ms"] = round(
             (time.perf_counter() - started) * 1000, 3
         )
+        guidance = describe_suite_guidance(checks)
+        if guidance:
+            row["guidance"] = guidance
     return row
 
 
@@ -463,7 +506,7 @@ def run_live(
     key = os.environ.get("ORTHOCORE_API_KEY", "")
     if not key or key != key.strip() or any(c in key for c in "\r\n"):
         raise ValueError(
-            "Configure ORTHOCORE_API_KEY with an authorized API key; its value is never printed"
+            "Set ORTHOCORE_API_KEY in your environment before running live checks (credentials are never printed)"
         )
     challenge_selections = {"challenges", "challenge-tasks", "challenge-privacy"}
     multimodal_selections = {
@@ -564,20 +607,317 @@ def run_live(
                     suites.append(result)
             if case_id in {"all", "workbench"}:
                 suites.extend(_workbench_cases(base_url, timeout))
+            if case_id == "all":
+                from .multimodal_live import run_multimodal_live
+
+                suites.extend(
+                    run_multimodal_live(
+                        base_url=base_url,
+                        key=key,
+                        selection="multimodal",
+                        seed=seed,
+                        repeat=repeat,
+                        timeout=timeout,
+                    )
+                )
     result = report(suites, "actual-sdk-and-api", seed)
     samples = [
         suite["metrics"]["decompose_sdk_wall_ms"]
         for suite in suites
         if "decompose_sdk_wall_ms" in suite.get("metrics", {})
     ]
+    mm_samples = [
+        suite["metrics"]["decompose_http_wall_ms"]
+        for suite in suites
+        if "decompose_http_wall_ms" in suite.get("metrics", {})
+    ]
     result["measurement_boundaries"] = {
         "decompose_sdk_wall_ms": "Official SDK serialization, HTTP network, server execution and response validation; no provider time.",
+        "decompose_http_wall_ms": "Public /v1/decompose/{audio,image,video} HTTP request and JSON parse.",
         "local_provider_http_wall_ms": "Real loopback HTTP request to deterministic external-provider simulator.",
         "complete_scenario_wall_ms": "Whole scenario, including provider, rehydration, reuse negative control and optional industry engine.",
         "warmups": 0,
         "concurrency": 1,
-        "repeat_applies_to": "SDK cases only; public workbench cases run once.",
+        "repeat_applies_to": "SDK and multimodal HTTP cases; public workbench cases run once.",
     }
     if samples:
         result["sdk_decompose_observations"] = percentiles(samples)
+    if mm_samples:
+        result["multimodal_decompose_observations"] = percentiles(mm_samples)
     return result
+
+
+def validate_live_credentials(
+    base_url: str | None = None, key: str | None = None, *, timeout: float = 15.0
+) -> tuple[str, str, float]:
+    """Validate server-side live service configuration without echoing credentials."""
+    if not math.isfinite(timeout) or not 1 <= timeout <= 60:
+        raise ValueError("timeout must be between 1 and 60 seconds")
+    resolved_base = validate_origin(
+        base_url
+        if base_url is not None
+        else os.environ.get("ORTHOCORE_BASE_URL", "https://eigenscope.guardianai.network")
+    )
+    resolved_key = key if key is not None else os.environ.get("ORTHOCORE_API_KEY", "")
+    if (
+        not resolved_key
+        or resolved_key != resolved_key.strip()
+        or any(c in resolved_key for c in "\r\n")
+    ):
+        raise ValueError(
+            "Set ORTHOCORE_API_KEY in your environment before starting live mode (credentials are never printed)"
+        )
+    return resolved_base, resolved_key, float(timeout)
+
+
+def build_live_web_runners(
+    base_url: str | None = None, key: str | None = None, *, timeout: float = 15.0
+) -> tuple[str, dict[str, Callable[..., dict[str, Any]]]]:
+    """Build browser scenario runners backed by live EigenScope SDK/HTTP calls."""
+    resolved_base, resolved_key, resolved_timeout = validate_live_credentials(
+        base_url, key, timeout=timeout
+    )
+    cases_by_id = {case.id: case for case in CASES}
+
+    def execute_sdk(
+        case_id: str, seed: int, on_frame: Callable[[dict[str, Any]], None] | None = None
+    ) -> dict[str, Any]:
+        import httpx
+        from eigenscope_sdk import EigenScopeClient
+        from openai import OpenAI
+
+        from .simulators.provider import ProviderServer
+
+        with (
+            ProviderServer() as server,
+            OpenAI(
+                base_url=server.base_url,
+                api_key="local-simulator-only",
+                max_retries=0,
+                http_client=httpx.Client(trust_env=False),
+            ) as provider,
+            closing(
+                make_observed_client(
+                    EigenScopeClient,
+                    base_url=resolved_base,
+                    bearer_token=resolved_key,
+                    timeout_seconds=resolved_timeout,
+                )
+            ) as client,
+        ):
+            return _sdk_case(
+                cases_by_id[case_id],
+                client=client,
+                provider=provider,
+                provider_server=server,
+                seed=seed,
+                on_frame=on_frame,
+            )
+
+    def make_domain_runner(case_id: str) -> Callable[..., dict[str, Any]]:
+        def runner(
+            seed: int = 7, on_frame: Callable[[dict[str, Any]], None] | None = None
+        ) -> dict[str, Any]:
+            sdk_row = execute_sdk(case_id, seed, on_frame)
+            sdk_checks = [
+                check
+                for check in sdk_row["checks"]
+                if check.get("name") != "industry_adapter_checks_pass"
+            ]
+            external = sdk_row.get("external_system", {})
+            return {
+                "suite": case_id,
+                "engine": f"Live EigenScope SDK + {external.get('engine', case_id)}",
+                "seed": seed,
+                "checks": [*sdk_checks, *external.get("checks", [])],
+                "metrics": {
+                    **external.get("metrics", {}),
+                    "live_eigenscope": sdk_row.get("metrics", {}),
+                },
+                "scope": sdk_row["scope"],
+            }
+
+        return runner
+
+    def run_live_multimodal_scenario(
+        seed: int = 7, on_frame: Callable[[dict[str, Any]], None] | None = None
+    ) -> dict[str, Any]:
+        from .multimodal_live import run_multimodal_live
+        from .simulators.multimodal import run_multimodal
+
+        local_res = run_multimodal(seed=seed, on_frame=on_frame)
+        live_rows = run_multimodal_live(
+            base_url=resolved_base,
+            key=resolved_key,
+            selection="multimodal",
+            seed=seed,
+            repeat=1,
+            timeout=resolved_timeout,
+        )
+        live_checks: list[dict[str, Any]] = []
+        live_status_by_mod: dict[str, str] = {}
+        sim_t = float(local_res["metrics"].get("simulation_time_s", 2.75))
+        for mod_row in live_rows:
+            modality = str(mod_row.get("modality", "video_clip"))
+            short = modality.split("_", 1)[0]
+            passed = outcome(mod_row) == "PASS"
+            status_code = mod_row.get("http_status")
+            row_checks = mod_row.get("checks", [])
+            tier_gated = not passed and (
+                status_code == 503
+                or any(
+                    chk.get("reason_code") == "SURFACE_DENIED_UNTIL_QUALIFIED"
+                    or chk.get("error_code") == "CORE_AUTHORITY_UNAVAILABLE"
+                    for chk in row_checks
+                )
+            )
+            auth_required = not passed and status_code in {401, 403}
+            live_status_by_mod[modality] = (
+                "PASSED"
+                if passed
+                else "TIER_GATED"
+                if tier_gated
+                else "AUTH_REQUIRED"
+                if auth_required
+                else "NEEDS_REVIEW"
+            )
+            for chk in row_checks:
+                live_checks.append(
+                    {
+                        **chk,
+                        "name": f"live_v1_{short}_{chk['name']}",
+                    }
+                )
+            if on_frame is not None:
+                sim_t = round(sim_t + 0.25, 6)
+                frame_payload: dict[str, Any] = {
+                    "phase": f"live-v1-{short}",
+                    "modality": modality,
+                    "t": sim_t,
+                    "container_bytes": mod_row.get("metrics", {}).get("raw_media_bytes", 0),
+                    "rejected_controls": 6,
+                    "expected_rejected_controls": 6,
+                    "exact_roundtrip": passed,
+                    "live_failed": not passed,
+                    "live_tier_gated": tier_gated,
+                    "live_modality_status": dict(live_status_by_mod),
+                    "active_stage": "LIVE VERIFIED"
+                    if passed
+                    else "TIER ACCESS REQUIRED"
+                    if tier_gated
+                    else "CHECK API KEY"
+                    if auth_required
+                    else "REVIEW LIVE CHECK",
+                }
+                if modality == "video_clip":
+                    frame_payload.update({"video_frame_count": 6, "width": 96, "height": 64})
+                elif modality == "image_frame":
+                    frame_payload.update({"width": 64, "height": 48})
+                on_frame(frame_payload)
+        return {
+            **local_res,
+            "engine": f"Live /v1 multimodal HTTP ({resolved_base}) + {local_res['engine']}",
+            "checks": [*live_checks, *local_res["checks"]],
+            "metrics": {
+                **local_res["metrics"],
+                "live_multimodal": [row.get("metrics", {}) for row in live_rows],
+            },
+        }
+
+    def run_live_tools_scenario(
+        seed: int = 7, on_frame: Callable[[dict[str, Any]], None] | None = None
+    ) -> dict[str, Any]:
+        from .simulators.tools import run_tools
+
+        local_res = run_tools(seed=seed, on_frame=on_frame)
+        sdk_row = execute_sdk("tool-injection", seed, None)
+        combined = [*sdk_row["checks"], *local_res["checks"]]
+        if on_frame is not None:
+            on_frame(
+                {
+                    "suite": "tools",
+                    "phase": "live_sanitize_tool_output",
+                    "completed_checks": len(combined),
+                    "passed": all(c.get("passed") is True for c in combined),
+                    "observed_checks": combined,
+                }
+            )
+        return {
+            **local_res,
+            "engine": f"Live EigenScope sanitize_tool_output + {local_res['engine']}",
+            "checks": combined,
+            "metrics": {
+                **local_res.get("metrics", {}),
+                "live_eigenscope": sdk_row.get("metrics", {}),
+            },
+        }
+
+    def run_live_coding_scenario(
+        seed: int = 7, on_frame: Callable[[dict[str, Any]], None] | None = None
+    ) -> dict[str, Any]:
+        from .simulators.coding import run_coding
+
+        local_res = run_coding(seed=seed, on_frame=on_frame)
+        sdk_row = execute_sdk("coding", seed, None)
+        combined = [*sdk_row["checks"], *local_res["checks"]]
+        if on_frame is not None:
+            on_frame(
+                {
+                    "suite": "coding",
+                    "phase": "live_sdk_coding_roundtrip",
+                    "completed_checks": len(combined),
+                    "passed": all(c.get("passed") is True for c in combined),
+                    "observed_checks": combined,
+                }
+            )
+        return {
+            **local_res,
+            "engine": f"Live EigenScope SDK + {local_res['engine']}",
+            "checks": combined,
+            "metrics": {
+                **local_res.get("metrics", {}),
+                "live_eigenscope": sdk_row.get("metrics", {}),
+            },
+        }
+
+    def run_live_provider_scenario(
+        seed: int = 7, on_frame: Callable[[dict[str, Any]], None] | None = None
+    ) -> dict[str, Any]:
+        from .simulators.provider import run_provider
+
+        local_res = run_provider(seed=seed, on_frame=on_frame)
+        email_row = execute_sdk("email", seed, None)
+        unicode_row = execute_sdk("unicode", seed, None)
+        wb_rows = _workbench_cases(resolved_base, resolved_timeout)
+        live_checks: list[dict[str, Any]] = []
+        for prefix, row in (("live_email", email_row), ("live_unicode", unicode_row)):
+            for chk in row.get("checks", []):
+                live_checks.append({**chk, "name": f"{prefix}_{chk['name']}"})
+        for wb_row in wb_rows:
+            short = str(wb_row["suite"]).replace("workbench:", "live_workbench_")
+            for chk in wb_row.get("checks", []):
+                live_checks.append({**chk, "name": f"{short}_{chk['name']}"})
+        return {
+            **local_res,
+            "engine": f"Live EigenScope SDK & Workbench API + {local_res['engine']}",
+            "checks": [*live_checks, *local_res["checks"]],
+            "metrics": {
+                **local_res.get("metrics", {}),
+                "live_email": email_row.get("metrics", {}),
+                "live_unicode": unicode_row.get("metrics", {}),
+            },
+        }
+
+    return (
+        resolved_base,
+        {
+            "robotics": make_domain_runner("robotics"),
+            "telecom": make_domain_runner("telecom"),
+            "oil-gas": make_domain_runner("oil-gas"),
+            "healthcare": make_domain_runner("healthcare"),
+            "multimodal": run_live_multimodal_scenario,
+            "provider": run_live_provider_scenario,
+            "tools": run_live_tools_scenario,
+            "coding": run_live_coding_scenario,
+        },
+    )

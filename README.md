@@ -30,7 +30,7 @@ uv run --frozen eigenscope-lab serve
 
 Open **http://127.0.0.1:8765**. Select a scenario, choose **Run**, and inspect its measurements and checks. Robotics shows movement, sensing and safety stops; Telecom shows queues and throughput; Oil & Gas shows receiver pressure, reviewed proposals and shutdown; the provider, MCP and coding views follow their actual protocol or process checkpoints. Switch between light and dark themes, stop a run, or download its completed JSON result. See the [dashboard guide](docs/visualization.md).
 
-**Local scenarios and the dashboard need no EigenScope account, API key or hosted credits.** Installation downloads the pinned packages; these scenarios then run locally. The dashboard does not initiate authenticated API tests.
+**Local scenarios and the default dashboard need no EigenScope account, API key or hosted credits.** Installation downloads the pinned packages; these scenarios then run locally. Start with `eigenscope-lab serve --live` only when you want browser runs to execute against a configured EigenScope service.
 
 Python 3.12 is selected automatically. Python 3.11–3.13 are the initial CI targets. The default scenarios need no Docker daemon, GPU, radio hardware or physical robot. Git is used for the coding workflow. The installed Python SDK is an unmodified, hash-verified official package; [SDK versions and provenance](docs/sdk-snapshots.md) explain the reproducible baseline.
 

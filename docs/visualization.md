@@ -7,7 +7,7 @@ uv sync --frozen --all-extras
 uv run eigenscope-lab serve --host 127.0.0.1 --port 8765
 ```
 
-Open `http://127.0.0.1:8765` in a browser. Select Robotics, Telecom, Oil & Gas, Model provider, MCP tools or Coding workflow, choose a seed, and select **Run**. The dashboard needs no API credentials. Authenticated EigenScope testing remains an explicit CLI operation.
+Open `http://127.0.0.1:8765` in a browser. Select Robotics, Telecom, Oil & Gas, Healthcare, Multimodal, Model provider, MCP tools or Coding workflow, choose a seed, and select **Run**. By default the dashboard runs offline and needs no API credentials; pass `--live` to run against your configured EigenScope service using server-side `ORTHOCORE_API_KEY`.
 
 Run guidance explains the next step as a scenario starts, runs, stops or finishes. **Passed** means all returned checks passed. **Run again** repeats the selected scenario; **Reset view** clears a finished run's presentation. On mobile, **Scenarios** displays the current selection. Escape closes the menu and returns keyboard focus to its button.
 
@@ -27,7 +27,7 @@ The visualization follows measurements from the installed engines:
 
 The interface supports light and dark themes, keyboard controls, a compact scenario menu, responsive diagram layouts and text equivalents for the latest measurements. Charts redraw only when real telemetry arrives. There are no remote fonts, CDNs or decorative motion dependencies.
 
-The server binds only to loopback by default. The Docker distribution explicitly enables an internal `0.0.0.0` bind so Docker can forward the port; its published port must remain `127.0.0.1:8765:8765`. This explicit mode retains the same loopback Host and browser-Origin checks and does not permit arbitrary network addresses. It exposes fixed assets and small JSON actions, admits one active simulation, keeps a maximum of 512 replay events and 20 history summaries, limits concurrent event streams, and rejects unexpected credential fields. It is a local developer tool, not a multi-user hosted service. It neither reads credentials nor provides a live API action from the browser.
+The server binds only to loopback by default. The Docker distribution explicitly enables an internal `0.0.0.0` bind so Docker can forward the port; its published port must remain `127.0.0.1:8765:8765`. This explicit mode retains the same loopback Host and browser-Origin checks and does not permit arbitrary network addresses. It exposes fixed assets and small JSON actions, admits one active simulation, keeps a maximum of 512 replay events and 20 history summaries, limits concurrent event streams, and rejects unexpected credential fields from browser requests. It is a local developer tool, not a multi-user hosted service.
 
 Disconnects reconnect through SSE event IDs. A fresh server or an expired replay window sends the current state and begins a new observation window. Detailed local exceptions go to the terminal; the interface provides a clear recovery message.
 

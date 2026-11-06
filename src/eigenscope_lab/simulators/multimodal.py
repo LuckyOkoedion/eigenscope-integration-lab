@@ -509,6 +509,8 @@ def run_multimodal(
                     "container_bytes": len(projected_ocvc),
                     "video_frame_index": f_idx,
                     "video_frame_count": bundle["video_frames"],
+                    "width": bundle["video_width"],
+                    "height": bundle["video_height"],
                     "track_box_x": vbox.x,
                     "track_box_y": vbox.y,
                     "exact_roundtrip": False,
@@ -561,6 +563,9 @@ def run_multimodal(
             "video_clip",
             {
                 "container_bytes": len(restored_ocvc),
+                "video_frame_count": bundle["video_frames"],
+                "width": bundle["video_width"],
+                "height": bundle["video_height"],
                 "rejected_controls": rejected_controls,
                 "expected_rejected_controls": 6,
                 "exact_roundtrip": video_sha_exact,

@@ -523,3 +523,26 @@ def test_cli_does_not_echo_an_unexpected_runtime_exception(monkeypatch, capsys):
     assert exit_code != 0
     output = capsys.readouterr()
     assert "SYNTHETIC_PRIVATE_RUNTIME_DETAIL" not in output.err + output.out
+
+
+def test_validate_live_credentials_and_web_runners_registry():
+    with pytest.raises(ValueError):
+        live.validate_live_credentials("https://sdk.example.invalid", "")
+    with pytest.raises(ValueError) as bad_key:
+        live.validate_live_credentials("https://sdk.example.invalid", " untrimmed-secret ")
+    assert "untrimmed-secret" not in str(bad_key.value)
+
+    origin, runners = live.build_live_web_runners(
+        "https://sdk.example.invalid/", "synthetic-key-only", timeout=10.0
+    )
+    assert origin == "https://sdk.example.invalid"
+    assert set(runners) == {
+        "robotics",
+        "telecom",
+        "oil-gas",
+        "healthcare",
+        "multimodal",
+        "provider",
+        "tools",
+        "coding",
+    }
