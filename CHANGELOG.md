@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 — 2026-11-06
+
+Add the Healthcare scenario (two-compartment IV pharmacokinetic dosing, clinician sign-off and loopback HL7 FHIR R4 gate) and the Multimodal scenario (in-memory PCM16 WAV, CRC-32 PNG and RGBA OCVC container validation, masking and SHA-256 round-trip checks). Add live HTTP multimodal contract runners and upgrade Python and TypeScript SDK pins to 0.2.6.
+
 ## 0.1.2 — 2026-10-30
 
 Improve the getting-started journey and public developer guides. Publish refreshed source archives and release checksums.

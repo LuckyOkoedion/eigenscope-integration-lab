@@ -13,6 +13,8 @@ SCENARIOS = {
     "telecom": ("telecom", "run_telecom", "telecom"),
     "robotics": ("robotics", "run_robotics", "robotics"),
     "oil-gas": ("oil_gas", "run_oil_gas", "oil-gas"),
+    "healthcare": ("healthcare", "run_healthcare", "healthcare"),
+    "multimodal": ("multimodal", "run_multimodal", "multimodal"),
 }
 
 

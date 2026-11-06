@@ -16,7 +16,16 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
-SCENARIOS = ("robotics", "telecom", "oil-gas", "provider", "tools", "coding")
+SCENARIOS = (
+    "robotics",
+    "telecom",
+    "oil-gas",
+    "healthcare",
+    "multimodal",
+    "provider",
+    "tools",
+    "coding",
+)
 ASSET_ROOT = Path(__file__).parent / "assets" / "web"
 LOGGER = logging.getLogger(__name__)
 

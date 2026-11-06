@@ -1,14 +1,22 @@
 # SDK versions and reproducibility
 
-The Python lab uses the official, unmodified EigenScope SDK **0.2.5** from the [EigenScope package registry](https://eigenscope.guardianai.network/registry). Its immutable 33,471-byte [Python wheel](https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl) declares Apache-2.0 and has this SHA-256:
+The Python lab uses the official, unmodified EigenScope SDK **0.2.6** from the [EigenScope package registry](https://eigenscope.guardianai.network/registry). Its immutable 35,735-byte [Python wheel](https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.6-py3-none-any.whl) declares Apache-2.0 and has this SHA-256:
 
 ```text
-ac5485b605244ba513e0e99c9f7b2eb04f5499e7c08ff505803cc8afdf14d061
+790d9658f9d91b66ed78cbf27413ae8233a52ea7e10e75800b2849c86512e6d7
 ```
 
-`pyproject.toml` and `uv.lock` identify the archive and enforce its integrity. SDK 0.2.5 includes `eigenscope_sdk.connect_model` and the official `eigenscope_sdk.lab_connector:connect` adapter used by the [model integration guide](model-integration.md). Model inference and its protected runtime use the separate environment described there.
+`pyproject.toml` and `uv.lock` identify the archive and enforce its integrity. SDK 0.2.6 includes `eigenscope_sdk.connect_model` and the official `eigenscope_sdk.lab_connector:connect` adapter used by the [model integration guide](model-integration.md). Model inference and its protected runtime use the separate environment described there.
 
-The TypeScript example retains its independent [unmodified SDK 0.2.2 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.2-80b9beda), with npm integrity pinned in `typescript/package-lock.json`. The earlier [Python SDK 0.2.2 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-python-0.2.2-4da938e7) remains available with its original provenance, license and checksum for reproducing earlier runs. These independent pins make each run's client version reproducible. The configured service is selected separately through `ORTHOCORE_BASE_URL`.
+The TypeScript workspace pins the official, unmodified [TypeScript SDK 0.2.6 tarball](https://eigenscope.guardianai.network/npm/eigenscope-sdk-0.2.6.tgz) (51,089 bytes, SHA-256 `acc08d85a2968f870107967f67154c4a29c99f8609ca0b08d937557327179358`), with SHA-512 integrity enforced in `typescript/package-lock.json`.
+
+Earlier snapshots remain documented for reproducing prior runs:
+
+- Python SDK **0.2.5** wheel (`33,471` bytes, SHA-256 `ac5485b605244ba513e0e99c9f7b2eb04f5499e7c08ff505803cc8afdf14d061`)
+- [Python SDK 0.2.2 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-python-0.2.2-4da938e7)
+- [TypeScript SDK 0.2.2 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.2-80b9beda)
+
+These independent pins make each run's client version reproducible. The configured service is selected separately through `ORTHOCORE_BASE_URL`.
 
 ## Update a dependency
 

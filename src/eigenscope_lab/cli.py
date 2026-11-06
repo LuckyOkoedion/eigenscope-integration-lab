@@ -114,6 +114,8 @@ def main(argv: list[str] | None = None) -> int:
                 "eigenscope_sdk",
                 "CoolProp",
                 "scipy",
+                "numpy",
+                "httpx",
                 "asyncua",
             )
         }

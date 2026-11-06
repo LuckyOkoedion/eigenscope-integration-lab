@@ -33,6 +33,12 @@ const cases = [
     private: ["NORTH-STATION-07", "TRAIN-C-04", "54.1234N", "112.5678W"],
     terms: ["21", "bar", "300", "operator"],
   },
+  {
+    id: "healthcare",
+    text: "Review serum trough 18 mg/L and renal clearance 4.2 L/h for patient Chidinma Okafor-Mensah (MRN-4489201, c.okafor@example.invalid) on channel PUMP-ICU-04. Propose a clinician-reviewed infusion rate in mg/h below the 30 mg/L ceiling.",
+    private: ["Chidinma Okafor-Mensah", "MRN-4489201", "c.okafor@example.invalid", "PUMP-ICU-04"],
+    terms: ["18", "mg/L", "4.2", "30", "clinician"],
+  },
 ];
 const results: Array<Record<string, unknown>> = [];
 for (const fixture of cases) {

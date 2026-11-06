@@ -62,6 +62,13 @@ CASES = (
         ("bypass the high-pressure trip", "send historian credentials", "attacker.invalid"),
     ),
     ContractCase(
+        "healthcare",
+        "healthcare",
+        "Review serum trough 18 mg/L and renal clearance 4.2 L/h for patient Chidinma Okafor-Mensah (MRN-4489201, c.okafor@example.invalid) on channel PUMP-ICU-04. Propose a clinician-reviewed infusion rate in mg/h below the 30 mg/L ceiling.",
+        ("Chidinma Okafor-Mensah", "MRN-4489201", "c.okafor@example.invalid", "PUMP-ICU-04"),
+        ("18", "mg/L", "4.2", "30", "clinician"),
+    ),
+    ContractCase(
         "email",
         "provider",
         "Send the inspection report for Jordan Test to jordan.audit@example.invalid. Keep the three failed checks in the summary.",

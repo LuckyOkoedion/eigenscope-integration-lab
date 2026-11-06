@@ -248,7 +248,7 @@ def _sdk_case(
         else:
             checks.append(_check("consumed_ticket_reuse_denied", False))
             consumed = False
-        if case.domain in {"robotics", "telecom", "oil-gas"}:
+        if case.domain in {"robotics", "telecom", "oil-gas", "healthcare"}:
             if case.domain == "robotics":
                 from .simulators.robotics import run_robotics
 
@@ -257,6 +257,10 @@ def _sdk_case(
                 from .simulators.telecom import run_telecom
 
                 external = run_telecom(seed=seed, task_core=core)
+            elif case.domain == "healthcare":
+                from .simulators.healthcare import run_healthcare
+
+                external = run_healthcare(seed=seed, task_core=core)
             else:
                 from .simulators.oil_gas import run_oil_gas
 
@@ -462,11 +466,52 @@ def run_live(
             "Configure ORTHOCORE_API_KEY with an authorized API key; its value is never printed"
         )
     challenge_selections = {"challenges", "challenge-tasks", "challenge-privacy"}
-    if case_id not in {"all", "workbench", *challenge_selections, *(case.id for case in CASES)}:
+    multimodal_selections = {
+        "multimodal",
+        "multimodal-audio",
+        "multimodal-image",
+        "multimodal-video",
+    }
+    if case_id not in {
+        "all",
+        "workbench",
+        *challenge_selections,
+        *multimodal_selections,
+        *(case.id for case in CASES),
+    }:
         raise ValueError(
             "Unknown case; choose all, workbench, challenges, challenge-tasks, challenge-privacy, "
-            "coding, tool-injection, telecom, robotics, oil-gas, email or unicode"
+            "multimodal, multimodal-audio, multimodal-image, multimodal-video, "
+            "coding, tool-injection, telecom, robotics, oil-gas, healthcare, email or unicode"
         )
+    if case_id in multimodal_selections:
+        from .multimodal_live import run_multimodal_live
+
+        rows = run_multimodal_live(
+            base_url=base_url,
+            key=key,
+            selection=case_id,
+            seed=seed,
+            repeat=repeat,
+            timeout=timeout,
+        )
+        result = report(rows, "actual-multimodal-http-api", seed)
+        mm_samples = [
+            row["metrics"]["decompose_http_wall_ms"]
+            for row in rows
+            if "decompose_http_wall_ms" in row.get("metrics", {})
+        ]
+        result["measurement_boundaries"] = {
+            "decompose_http_wall_ms": "Public /v1/decompose/{audio,image,video} HTTP request and JSON parse.",
+            "rehydrate_http_wall_ms": "Public /v1/rehydrate/media HTTP request and SHA-256 verification.",
+            "complete_modality_wall_ms": "Whole modality workflow including single-use ticket replay denial and cleanup.",
+            "warmups": 0,
+            "concurrency": 1,
+            "repeat_applies_to": "All selected multimodal HTTP cases; fixed synthetic media.",
+        }
+        if mm_samples:
+            result["multimodal_decompose_observations"] = percentiles(mm_samples)
+        return result
     if case_id in challenge_selections:
         from .challenges import run_challenges
 

@@ -25,6 +25,8 @@ flowchart LR
 |---|---|---|
 | Robotics | Actual MuJoCo state integration, ray sensing, contacts and controller constraints | A robot's calibrated dynamics, ROS2 transport and physical safety validation |
 | Oil & Gas | CoolProp methane equation of state, SciPy receiver dynamics, independent shutdown and loopback OPC UA | Calibrated site/equipment model, operator identity and production transport security |
+| Healthcare | SciPy two-compartment IV PK mass balance, clinician sign-off and loopback HL7 FHIR R4 HTTP | Validated clinical PK/PD models, EHR authentication and medical-device governance |
+| Multimodal | Lossless PCM16 WAV, CRC-32 PNG and RGBA OCVC codecs, Parseval/STFT checks and SHA-256 restoration | Hosted or sidecar `/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media` runtime (`live --case multimodal`) |
 | Telecom fast scenario | Actual SimPy queue/resource simulation with seeded workload | Radio propagation/RF, actual E2AP/O-RAN controller and production scheduling |
 | Telecom heavy profile | Pinned Open5GS core + UERANSIM RAN/UE when launched and verified | Suitable Linux container host, virtual-network capabilities; no physical RF |
 | Provider | Actual OpenAI HTTP/SSE client and deterministic local endpoint | Actual model behavior, provider-network latency and commercial credentials |

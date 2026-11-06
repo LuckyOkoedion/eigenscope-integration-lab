@@ -21,6 +21,20 @@ const definitions = {
       "Follow receiver pressure, reviewed load changes and independent shutdown protection.",
     scope: "Methane receiver model · Local OPC UA exchange",
   },
+  healthcare: {
+    title: "Healthcare",
+    engine: "SciPy PK · NumPy · HL7 FHIR R4",
+    description:
+      "Track two-compartment IV drug levels, clinician-reviewed orders and independent pump clamping.",
+    scope: "Two-compartment PK model · Loopback FHIR R4 HTTP",
+  },
+  multimodal: {
+    title: "Multimodal",
+    engine: "NumPy · SciPy STFT · WAV / PNG / OCVC",
+    description:
+      "Verify container integrity, audio/visual span masking and SHA-256 bit-exact restoration.",
+    scope: "In-memory PCM16 WAV, CRC-32 PNG and RGBA video frames",
+  },
   provider: {
     title: "Model provider",
     engine: "OpenAI client · Loopback HTTP / SSE",
@@ -141,6 +155,10 @@ function updateMetrics() {
     robotics: "Can the robot reach its goal while respecting its stop limits?",
     telecom: "Can the allocated radio capacity serve this traffic without excessive queues?",
     "oil-gas": "Do proposals stay within operating limits, even when sensor data misleads?",
+    healthcare:
+      "Do infusion orders require clinician sign-off and halt below the toxic serum ceiling?",
+    multimodal:
+      "Are sensitive audio/visual spans masked cleanly and restored byte-for-byte via SHA-256?",
     provider: "When does useful content arrive, and does the stream finish or stop correctly?",
     tools:
       "Which tool actions were permitted, which were denied, and where did untrusted data enter?",
@@ -151,6 +169,8 @@ function updateMetrics() {
     robotics: "Route and stopping envelope",
     telecom: "Radio load and service quality",
     "oil-gas": "Pressure, proposals and shutdown",
+    healthcare: "Serum concentration, FHIR orders and pump clamp",
+    multimodal: "Media containers, span masking and SHA-256 round-trip",
     provider: "Content arrival and stream lifecycle",
     tools: "Tool access and trust boundaries",
     coding: "Change, test and workspace isolation",
@@ -236,6 +256,54 @@ function updateMetrics() {
         "Protection",
         frame.safety_stop ? "Shutdown latched" : "Monitoring",
         words(frame.stop_reason),
+      ],
+    ]);
+  } else if (selected === "healthcare") {
+    metrics([
+      [
+        "Serum / ceiling",
+        `${number(frame.central_conc_mg_l, 2)} / ${number(frame.toxic_ceiling_mg_l, 1)} mg/L`,
+        `Chart reports ${number(frame.published_conc_mg_l, 2)} mg/L`,
+      ],
+      [
+        "Requested / effective rate",
+        `${number(frame.requested_rate_mg_h, 1)} / ${number(frame.infusion_rate_mg_h, 1)} mg/h`,
+        frame.safety_clamp ? "Pump clamp halts infusion" : "Reviewed order / pump rate",
+      ],
+      [
+        "Lab age / clearance",
+        `${number(frame.lab_age_h, 2)} h · ${number(frame.clearance_l_h, 2)} L/h`,
+        words(frame.order_status),
+      ],
+      [
+        "Pump protection",
+        frame.safety_clamp ? "Clamp latched" : "Monitoring",
+        words(frame.clamp_reason),
+      ],
+    ]);
+  } else if (selected === "multimodal") {
+    metrics([
+      ["Active modality", words(frame.modality), `Stage: ${words(frame.active_stage)}`],
+      [
+        "Container size",
+        `${frame.container_bytes ?? 0} bytes`,
+        frame.video_frame_count
+          ? `Frame ${(frame.video_frame_index ?? 0) + 1} of ${frame.video_frame_count}`
+          : frame.width
+            ? `${frame.width}×${frame.height} RGBA`
+            : "16 kHz PCM16 mono",
+      ],
+      [
+        "SHA-256 round-trip",
+        frame.exact_roundtrip ? "Bit-exact" : "Masked view",
+        frame.exact_roundtrip ? "Matches original container" : "Sensitive region zeroed",
+      ],
+      [
+        "Negative controls",
+        frame.rejected_controls !== undefined
+          ? `${frame.rejected_controls} / ${frame.expected_rejected_controls} denied`
+          : "Pending final phase",
+        "Replay, tamper and dimension bounds",
       ],
     ]);
   } else if (selected === "provider" && providerLatest) {
@@ -414,7 +482,9 @@ function applyFrame(payload) {
   $("phase").textContent =
     selected === "oil-gas" && frame.phase === "stale-sensor-stop"
       ? "Separate receiver experiment · stale-sensor stop"
-      : words(frame.phase || "Engine running");
+      : selected === "healthcare" && frame.phase === "stale-lab-hold"
+        ? "Separate subject experiment · stale-lab pump hold"
+        : words(frame.phase || "Engine running");
   $("telemetry").textContent = JSON.stringify(frame, null, 2);
   updateMetrics();
   requestDraw();
@@ -686,6 +756,14 @@ function draw() {
     drawOilGas(compact);
     return;
   }
+  if (selected === "healthcare") {
+    drawHealthcare(compact);
+    return;
+  }
+  if (selected === "multimodal") {
+    drawMultimodal(compact);
+    return;
+  }
   if (selected === "tools" || selected === "coding") {
     drawWorkflow(compact);
     return;
@@ -819,6 +897,209 @@ function drawOilGas(compact) {
   canvas.setAttribute(
     "aria-label",
     `Gas receiver ${words(frame.phase)}, pressure ${number(frame.pressure_pa / 100000, 2)} bar absolute; trip ${number(frame.hh_pressure_pa / 100000, 1)} bar; inlet ${number(frame.inflow_kg_s, 3)} kilograms per second, outlet ${number(frame.outflow_kg_s, 3)}; safety stop ${stopped}.`,
+  );
+}
+function drawHealthcare(compact) {
+  const W = canvas.width,
+    ink = color("--ink"),
+    muted = color("--muted");
+  const accent = color("--accent"),
+    danger = color("--danger");
+  const clamped = Boolean(frame.safety_clamp),
+    cy = compact ? 145 : 155;
+  const pumpX = compact ? 92 : 170,
+    centralX = W / 2,
+    renalX = compact ? W - 92 : W - 170;
+  text("ICU IV PHARMACOKINETICS · HL7 FHIR R4 GATE", 28, 38, compact ? 22 : 21, ink);
+  text(
+    `${frame.phase === "stale-lab-hold" ? "New subject · stale-lab test" : words(frame.phase)} · ${number(frame.t, 2)} h simulated`,
+    28,
+    73,
+    compact ? 23 : 19,
+    muted,
+  );
+  line(pumpX + 32, cy, centralX - 84, cy, clamped ? muted : accent, 5);
+  line(centralX + 84, cy, renalX - 30, cy, frame.renal_factor > 0.3 ? accent : danger, 5);
+  circle(
+    pumpX,
+    cy,
+    31,
+    clamped ? color("--danger-soft") : color("--accent-soft"),
+    clamped ? danger : accent,
+  );
+  text(clamped ? "×" : "›", pumpX, cy + 13, 40, clamped ? danger : accent, "center");
+  ctx.fillStyle = color("--surface");
+  ctx.strokeStyle = clamped ? danger : accent;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(centralX - 82, cy - 55, 164, 110, 26);
+  ctx.fill();
+  ctx.stroke();
+  text(number(frame.central_conc_mg_l, 2), centralX, cy + 7, compact ? 38 : 42, ink, "center");
+  text("mg/L serum", centralX, cy + 37, 20, muted, "center");
+  circle(
+    renalX,
+    cy,
+    24,
+    frame.renal_factor > 0.3 ? color("--accent-soft") : color("--danger-soft"),
+    frame.renal_factor > 0.3 ? accent : danger,
+  );
+  text("IV Pump", pumpX, cy + 83, compact ? 23 : 19, ink, "center");
+  text("Central + Tissue", centralX, cy + 83, compact ? 23 : 19, ink, "center");
+  text(
+    `Clearance · ${number(frame.clearance_l_h, 1)} L/h`,
+    renalX,
+    cy + 83,
+    compact ? 22 : 19,
+    ink,
+    "center",
+  );
+  const x = 45,
+    y = compact ? 290 : 302,
+    width = W - 90,
+    height = compact ? 90 : 125;
+  const ceiling = Math.max(
+    (frame.toxic_ceiling_mg_l || 30) * 1.18,
+    (frame.central_conc_mg_l || 18) * 1.1,
+  );
+  const py = (conc) => y + height - Math.max(0, Math.min(1, conc / ceiling)) * height;
+  line(x, y + height, x + width, y + height, muted);
+  ctx.save();
+  ctx.setLineDash([7, 6]);
+  line(x, py(frame.toxic_ceiling_mg_l), x + width, py(frame.toxic_ceiling_mg_l), danger, 2);
+  ctx.restore();
+  text(
+    `Toxic ceiling ${number(frame.toxic_ceiling_mg_l, 1)} mg/L`,
+    x,
+    y - 13,
+    compact ? 22 : 18,
+    danger,
+  );
+  trace.forEach((sample, i) => {
+    if (!i) return;
+    line(
+      x + ((i - 1) / Math.max(1, trace.length - 1)) * width,
+      py(trace[i - 1].central_conc_mg_l),
+      x + (i / Math.max(1, trace.length - 1)) * width,
+      py(sample.central_conc_mg_l),
+      color("--chart"),
+      3,
+    );
+  });
+  ctx.save();
+  ctx.setLineDash([4, 5]);
+  trace.forEach((sample, i) => {
+    if (i)
+      line(
+        x + ((i - 1) / Math.max(1, trace.length - 1)) * width,
+        py(trace[i - 1].published_conc_mg_l),
+        x + (i / Math.max(1, trace.length - 1)) * width,
+        py(sample.published_conc_mg_l),
+        color("--warning"),
+        2,
+      );
+  });
+  ctx.restore();
+  text("True serum", x + width - 210, y + height - 10, compact ? 20 : 15, color("--chart"));
+  text(
+    "Published lab",
+    x + width - 18,
+    y + height - 10,
+    compact ? 20 : 15,
+    color("--warning"),
+    "right",
+  );
+  text(
+    clamped
+      ? `Pump clamp latched · ${words(frame.clamp_reason)}`
+      : "Clinician sign-off & concentration monitor active",
+    x,
+    compact ? 420 : 470,
+    compact ? 22 : 20,
+    clamped ? danger : accent,
+  );
+  canvas.setAttribute(
+    "aria-label",
+    `Healthcare PK ${words(frame.phase)}, central concentration ${number(frame.central_conc_mg_l, 2)} milligrams per litre, ceiling ${number(frame.toxic_ceiling_mg_l, 1)}, pump clamp ${clamped}.`,
+  );
+}
+function drawMultimodal(compact) {
+  const W = canvas.width,
+    ink = color("--ink"),
+    muted = color("--muted"),
+    accent = color("--accent");
+  text("MULTIMODAL CONTAINERS · MASKING & SHA-256 RESTORATION", 28, 38, compact ? 21 : 20, ink);
+  text(
+    `${words(frame.phase)} · ${words(frame.modality)} · ${frame.container_bytes || 0} bytes`,
+    28,
+    72,
+    compact ? 22 : 18,
+    muted,
+  );
+  const cards = [
+    ["Audio (WAV)", "audio_wav", "16 kHz PCM16 · Parseval"],
+    ["Image (PNG)", "image_frame", "RGBA · IEEE CRC-32"],
+    ["Video (OCVC)", "video_clip", "6 frames · Track boxes"],
+  ];
+  const order = { audio_wav: 0, image_frame: 1, video_clip: 2 };
+  const currentIdx = order[frame.modality] ?? 0;
+  cards.forEach(([title, mod, sub], idx) => {
+    const done = idx < currentIdx || (idx === currentIdx && frame.exact_roundtrip);
+    const active = idx === currentIdx;
+    const stroke = done ? accent : active ? color("--chart") : color("--line");
+    if (compact) {
+      const y = 104 + idx * 88;
+      ctx.fillStyle = color("--surface");
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = active ? 3 : 2;
+      ctx.beginPath();
+      ctx.roundRect(28, y, W - 56, 72, 14);
+      ctx.fill();
+      ctx.stroke();
+      text(title, 48, y + 30, 24, ink);
+      text(sub, 48, y + 56, 19, muted);
+      text(
+        done ? "SHA-256 ✓" : active ? "Masking…" : "Pending",
+        W - 48,
+        y + 42,
+        21,
+        stroke,
+        "right",
+      );
+    } else {
+      const cardW = 300,
+        x = 55 + idx * 335,
+        y = 118;
+      ctx.fillStyle = color("--surface");
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = active ? 3 : 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, cardW, 185, 18);
+      ctx.fill();
+      ctx.stroke();
+      text(`0${idx + 1}`, x + 24, y + 38, 19, stroke);
+      text(title, x + 24, y + 76, 25, ink);
+      text(sub, x + 24, y + 110, 16, muted);
+      text(
+        done ? "Bit-exact SHA-256 restored" : active ? "Span masking active" : "Queued",
+        x + 24,
+        y + 152,
+        17,
+        stroke,
+      );
+      if (idx < 2) line(x + cardW + 6, y + 92, x + cardW + 29, y + 92, color("--line"), 3);
+    }
+  });
+  const footerText =
+    frame.rejected_controls !== undefined
+      ? `Tamper, replay & dimension controls: ${frame.rejected_controls}/${frame.expected_rejected_controls} rejected`
+      : frame.video_frame_count
+        ? `Tracking badge box across frame ${(frame.video_frame_index ?? 0) + 1}/${frame.video_frame_count} (x=${frame.track_box_x}, y=${frame.track_box_y})`
+        : "In-memory container codec · zero disk writes";
+  text(footerText, 28, compact ? 408 : 420, compact ? 21 : 19, accent);
+  canvas.setAttribute(
+    "aria-label",
+    `Multimodal ${words(frame.phase)}, modality ${words(frame.modality)}, ${frame.container_bytes || 0} bytes, exact roundtrip ${Boolean(frame.exact_roundtrip)}.`,
   );
 }
 function drawCompact() {

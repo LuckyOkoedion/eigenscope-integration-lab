@@ -40,7 +40,7 @@ uv run --frozen eigenscope-lab live --case workbench --output results/workbench.
 uv run --frozen eigenscope-lab live --repeat 3 --timeout 15 --output results/repeated.json
 ```
 
-Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `email` and `unicode`. Requests run sequentially. Repeat applies to SDK cases, is capped at ten and leaves the workbench controls as a single pass.
+Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `healthcare`, `email` and `unicode`. Multimodal HTTP endpoints (`/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media`) can be selected explicitly with `--case multimodal`, `multimodal-audio`, `multimodal-image` or `multimodal-video`. Requests run sequentially. Repeat applies to SDK and multimodal cases, is capped at ten and leaves the workbench controls as a single pass.
 
 ## Automatic zero-tag privacy challenges
 
@@ -64,7 +64,7 @@ An empty or error response cannot pass the privacy check. Mapping handles stay i
 
 Answer tasks cover decimals, unit conversion, ranges, literal output, structured JSON and conditional logic. The actual workbench answer is compared with the fixed expected result; no echo provider supplies the answer. JSON answers reject duplicate keys, extra keys and wrong value types.
 
-`all` retains its existing 16-suite sample set; challenges run only when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. No live calls are made by the local dashboard or unit tests.
+`all` runs the 17-suite sample set (`CASES` plus `workbench`); challenges and multimodal HTTP checks run only when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. No live calls are made by the local dashboard or unit tests.
 
 Timings identify SDK, local-provider and complete-workflow boundaries. SDK wall time includes serialization, network requests, service execution and response validation. Reports record the sample count; compare runs using the same client, configuration and environment.
 

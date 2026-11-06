@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11, <3.15"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -469,7 +469,7 @@ wheels = [
 
 [[package]]
 name = "eigenscope-integration-lab"
-version = "0.1.2"
+version = "0.2.0"
 source = { editable = "." }
 
 [package.optional-dependencies]
@@ -489,8 +489,21 @@ all = [
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "simpy" },
 ]
+healthcare = [
+    { name = "httpx" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
 live = [
     { name = "eigenscope-sdk" },
+]
+multimodal = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
 oil-gas = [
     { name = "asyncua" },
@@ -532,18 +545,23 @@ requires-dist = [
     { name = "coolprop", marker = "extra == 'oil-gas'", specifier = ">=8,<9" },
     { name = "cryptography", marker = "extra == 'oil-gas'", specifier = ">=50,<51" },
     { name = "cryptography", marker = "extra == 'tools'", specifier = ">=50,<51" },
-    { name = "eigenscope-integration-lab", extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas"], marker = "extra == 'all'" },
-    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl" },
+    { name = "eigenscope-integration-lab", extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas", "healthcare", "multimodal"], marker = "extra == 'all'" },
+    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.6-py3-none-any.whl" },
+    { name = "httpx", marker = "extra == 'healthcare'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'provider'", specifier = ">=0.28,<1" },
     { name = "mcp", marker = "extra == 'tools'", specifier = ">=1.30,<2" },
     { name = "mujoco", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin' and extra == 'robotics'", specifier = ">=3.3,<3.4" },
     { name = "mujoco", marker = "(platform_machine != 'x86_64' and extra == 'robotics') or (sys_platform != 'darwin' and extra == 'robotics')", specifier = ">=3.3,<4" },
+    { name = "numpy", marker = "extra == 'healthcare'", specifier = ">=2,<3" },
+    { name = "numpy", marker = "extra == 'multimodal'", specifier = ">=2,<3" },
     { name = "numpy", marker = "extra == 'robotics'", specifier = ">=2,<3" },
     { name = "openai", marker = "extra == 'provider'", specifier = ">=2,<3" },
+    { name = "scipy", marker = "extra == 'healthcare'", specifier = ">=1.17,<2" },
+    { name = "scipy", marker = "extra == 'multimodal'", specifier = ">=1.17,<2" },
     { name = "scipy", marker = "extra == 'oil-gas'", specifier = ">=1.17,<2" },
     { name = "simpy", marker = "extra == 'telecom'", specifier = ">=4.1,<5" },
 ]
-provides-extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas", "all"]
+provides-extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas", "healthcare", "multimodal", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -556,10 +574,10 @@ dev = [
 
 [[package]]
 name = "eigenscope-sdk"
-version = "0.2.5"
-source = { url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl" }
+version = "0.2.6"
+source = { url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.6-py3-none-any.whl" }
 wheels = [
-    { url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl", hash = "sha256:ac5485b605244ba513e0e99c9f7b2eb04f5499e7c08ff505803cc8afdf14d061" },
+    { url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.6-py3-none-any.whl", hash = "sha256:790d9658f9d91b66ed78cbf27413ae8233a52ea7e10e75800b2849c86512e6d7" },
 ]
 
 [package.metadata]

@@ -54,6 +54,8 @@ Run these commands from the repository directory. Each guide explains the setup,
 | [Telecom](docs/scenarios/telecom.md) | SimPy UE traffic, radio-resource budgets, finite queues and latency | `uv run --frozen eigenscope-lab run telecom` |
 | [Robotics](docs/scenarios/robotics.md) | MuJoCo physics, navigation, sensing and an independent safety envelope | `uv run --frozen eigenscope-lab run robotics` |
 | [Oil & Gas](docs/scenarios/oil-gas.md) | CoolProp methane properties, SciPy receiver dynamics and real OPC UA authorization checks | `uv run --frozen eigenscope-lab run oil-gas` |
+| [Healthcare](docs/scenarios/healthcare.md) | SciPy two-compartment IV pharmacokinetics, clinician sign-off and loopback HL7 FHIR R4 gate | `uv run --frozen eigenscope-lab run healthcare` |
+| [Multimodal](docs/scenarios/multimodal.md) | In-memory PCM16 WAV, CRC-32 PNG and RGBA OCVC container validation, span masking and SHA-256 round-trip | `uv run --frozen eigenscope-lab run multimodal` |
 
 Pair the lab examples with EigenScope's product blueprints: [coding agents](https://eigenscope.guardianai.network/guide/coding), [tool-result protection](https://eigenscope.guardianai.network/guide/tool-results), [telecom](https://eigenscope.guardianai.network/guide/telecom), [robotics](https://eigenscope.guardianai.network/guide/robotics), [Oil & Gas](https://eigenscope.guardianai.network/guide/oil-gas) and [model platforms](https://eigenscope.guardianai.network/guide/model-platforms).
 
@@ -72,7 +74,8 @@ When you are ready to test the hosted service or your own sidecar:
 ```sh
 export ORTHOCORE_BASE_URL=https://eigenscope.guardianai.network
 # Set ORTHOCORE_API_KEY securely in your environment.
-uv run --frozen eigenscope-lab live --case robotics --output results/robotics-live.json
+uv run --frozen eigenscope-lab live --case healthcare --output results/healthcare-live.json
+uv run --frozen eigenscope-lab live --case multimodal --output results/multimodal-live.json
 uv run --frozen eigenscope-lab live --output results/live.json
 ```
 
