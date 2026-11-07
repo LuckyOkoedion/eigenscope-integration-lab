@@ -20,7 +20,7 @@
     "@eigenscope/sdk": "https://eigenscope.guardianai.network/npm/eigenscope-sdk-0.2.6.tgz"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "prettier": "^3.9.10",
     "typescript": "^5.9.3"
   }
