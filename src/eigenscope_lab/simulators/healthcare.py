@@ -18,12 +18,18 @@ import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlsplit
 
+from .fhir_r4 import validate_fhir_r4_resource
+
 PUMP_CHANNEL_ID = "lab-icu-infusion-pump-01"
 MEDICATION_CODE = "rxnorm:11124"  # Synthetic IV vancomycin-like reference code
+_FHIR_PATIENT = "Patient/lab-patient-01"
+_FHIR_EPOCH = datetime(2026, 1, 1, tzinfo=UTC)
+_RXNORM_SYSTEM = "http://www.nlm.nih.gov/research/umls/rxnorm"
 
 
 class ClinicalOrderRejected(ValueError):
@@ -88,26 +94,137 @@ class LocalClinicianApprovals:
 
     def __init__(self) -> None:
         self._pending: dict[str, tuple[str, float]] = {}
+        self._lock = threading.Lock()
 
     def issue(self, order: InfusionOrder, *, now_h: float) -> str:
         now_h = _number(now_h, "now_h")
         if not order.issued_at_h <= now_h < order.expires_at_h:
             raise ClinicalOrderRejected("Order is not currently valid")
         token = secrets.token_urlsafe(24)
-        self._pending[token] = (order.digest(), order.expires_at_h)
+        with self._lock:
+            self._pending[token] = (order.digest(), order.expires_at_h)
         return token
 
     def consume(self, token: Any, order: InfusionOrder, *, now_h: float) -> None:
         now_h = _number(now_h, "now_h")
-        if not isinstance(token, str) or token not in self._pending:
-            raise ClinicalOrderRejected("Missing, unknown or consumed clinician sign-off")
-        digest, deadline = self._pending[token]
-        if not order.issued_at_h <= now_h < deadline or digest != order.digest():
-            raise ClinicalOrderRejected("Clinician sign-off is expired or bound to another order")
-        del self._pending[token]
+        with self._lock:
+            if not isinstance(token, str) or token not in self._pending:
+                raise ClinicalOrderRejected("Missing, unknown or consumed clinician sign-off")
+            digest, deadline = self._pending[token]
+            if not order.issued_at_h <= now_h < deadline or digest != order.digest():
+                raise ClinicalOrderRejected(
+                    "Clinician sign-off is expired or bound to another order"
+                )
+            del self._pending[token]
 
     def close(self) -> None:
-        self._pending.clear()
+        with self._lock:
+            self._pending.clear()
+
+
+def _fhir_timestamp(hours: float) -> str:
+    try:
+        return (_FHIR_EPOCH + timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
+    except OverflowError as exc:
+        raise ClinicalOrderRejected("Order timestamp is outside the FHIR dateTime range") from exc
+
+
+def _fhir_hours(timestamp: Any) -> float:
+    if not isinstance(timestamp, str):
+        raise ClinicalOrderRejected("FHIR validity period requires dateTime strings")
+    parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ClinicalOrderRejected("FHIR validity period requires an explicit timezone")
+    return (parsed - _FHIR_EPOCH).total_seconds() / 3600.0
+
+
+def medication_request_for_order(order: InfusionOrder) -> dict[str, Any]:
+    """Encode this scenario's reviewed pump order using standard FHIR R4 fields."""
+    resource = {
+        "resourceType": "MedicationRequest",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+            "coding": [{"system": _RXNORM_SYSTEM, "code": MEDICATION_CODE.split(":")[1]}]
+        },
+        "subject": {"reference": _FHIR_PATIENT},
+        "supportingInformation": [{"reference": f"Device/{order.pump_id}"}],
+        "dosageInstruction": [
+            {
+                "timing": {
+                    "repeat": {
+                        "boundsPeriod": {
+                            "start": _fhir_timestamp(order.issued_at_h),
+                            "end": _fhir_timestamp(order.expires_at_h),
+                        }
+                    }
+                },
+                "doseAndRate": [
+                    {
+                        "rateQuantity": {
+                            "value": order.rate_mg_h,
+                            "unit": order.unit,
+                            "system": "http://unitsofmeasure.org",
+                            "code": "mg/h",
+                        }
+                    }
+                ],
+            }
+        ],
+    }
+    validate_fhir_r4_resource(resource)
+    return resource
+
+
+def infusion_order_from_fhir(resource: Any) -> InfusionOrder:
+    """Validate HL7 shape and the bounded local medication-order profile."""
+    validate_fhir_r4_resource(resource)
+    if (
+        set(resource)
+        != {
+            "resourceType",
+            "status",
+            "intent",
+            "medicationCodeableConcept",
+            "subject",
+            "supportingInformation",
+            "dosageInstruction",
+        }
+        or resource["resourceType"] != "MedicationRequest"
+        or resource["status"] != "active"
+        or resource["intent"] != "order"
+        or resource["subject"] != {"reference": _FHIR_PATIENT}
+        or resource["medicationCodeableConcept"]
+        != {"coding": [{"system": _RXNORM_SYSTEM, "code": MEDICATION_CODE.split(":")[1]}]}
+        or resource["supportingInformation"] != [{"reference": f"Device/{PUMP_CHANNEL_ID}"}]
+        or len(resource["dosageInstruction"]) != 1
+    ):
+        raise ClinicalOrderRejected("MedicationRequest is outside the local patient/pump profile")
+    dosage = resource["dosageInstruction"][0]
+    if set(dosage) != {"timing", "doseAndRate"} or len(dosage["doseAndRate"]) != 1:
+        raise ClinicalOrderRejected("MedicationRequest requires one bounded infusion rate")
+    rate = dosage["doseAndRate"][0]
+    repeat = dosage["timing"].get("repeat", {})
+    if (
+        set(rate) != {"rateQuantity"}
+        or set(dosage["timing"]) != {"repeat"}
+        or set(repeat) != {"boundsPeriod"}
+        or set(repeat["boundsPeriod"]) != {"start", "end"}
+        or set(rate["rateQuantity"]) != {"value", "unit", "system", "code"}
+        or rate["rateQuantity"]["system"] != "http://unitsofmeasure.org"
+        or rate["rateQuantity"]["code"] != "mg/h"
+    ):
+        raise ClinicalOrderRejected("MedicationRequest timing or UCUM rate is outside profile")
+    quantity = rate["rateQuantity"]
+    period = repeat["boundsPeriod"]
+    return InfusionOrder(
+        PUMP_CHANNEL_ID,
+        "set_infusion_rate",
+        quantity["value"],
+        quantity["unit"],
+        _fhir_hours(period["start"]),
+        _fhir_hours(period["end"]),
+    )
 
 
 @dataclass(frozen=True)
@@ -459,6 +576,7 @@ def run_fhir_r4_contract() -> dict[str, Any]:
             return
 
         def _reply(self, status: int, body: dict[str, Any]) -> None:
+            validate_fhir_r4_resource(body)
             raw = json.dumps(body, allow_nan=False).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/fhir+json; charset=utf-8")
@@ -476,16 +594,17 @@ def run_fhir_r4_contract() -> dict[str, Any]:
                         "resourceType": "Observation",
                         "id": "serum-drug-level",
                         "status": "final",
+                        "subject": {"reference": _FHIR_PATIENT},
                         "code": {
                             "coding": [
                                 {
                                     "system": "http://loinc.org",
                                     "code": "20578-1",
-                                    "display": "Serum drug trough concentration",
+                                    "display": "Vancomycin [Mass/volume] in Serum or Plasma",
                                 }
                             ]
                         },
-                        "effectiveDecimalHours": now_h,
+                        "effectiveDateTime": _fhir_timestamp(now_h),
                         "valueQuantity": {
                             "value": 18.0,
                             "unit": "mg/L",
@@ -495,12 +614,22 @@ def run_fhir_r4_contract() -> dict[str, Any]:
                     },
                 )
                 return
-            self._reply(404, {"resourceType": "OperationOutcome", "issue": [{"code": "not-found"}]})
+            self._reply(
+                404,
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [{"severity": "error", "code": "not-found"}],
+                },
+            )
 
         def do_POST(self) -> None:  # noqa: N802
             if urlsplit(self.path).path != "/fhir/r4/MedicationRequest":
                 self._reply(
-                    404, {"resourceType": "OperationOutcome", "issue": [{"code": "not-found"}]}
+                    404,
+                    {
+                        "resourceType": "OperationOutcome",
+                        "issue": [{"severity": "error", "code": "not-found"}],
+                    },
                 )
                 return
             try:
@@ -508,42 +637,18 @@ def run_fhir_r4_contract() -> dict[str, Any]:
                 if not 0 < length <= 8192:
                     raise ClinicalOrderRejected("Invalid FHIR payload length")
                 resource = json.loads(self.rfile.read(length))
-                if (
-                    not isinstance(resource, dict)
-                    or resource.get("resourceType") != "MedicationRequest"
-                    or resource.get("intent") != "order"
-                    or resource.get("medicationCodeableConcept", {}).get("text") != MEDICATION_CODE
-                ):
-                    raise ClinicalOrderRejected("Unsupported FHIR MedicationRequest schema")
-                dosage = resource.get("dosageInstruction", [{}])[0]
-                rate_qty = dosage.get("rateQuantity", {})
-                window = resource.get("validityWindowHours", {})
-                if set(resource) - {
-                    "resourceType",
-                    "intent",
-                    "medicationCodeableConcept",
-                    "pumpChannelId",
-                    "dosageInstruction",
-                    "validityWindowHours",
-                }:
-                    raise ClinicalOrderRejected("Unsupported extra fields on MedicationRequest")
-                order = InfusionOrder(
-                    pump_id=str(resource.get("pumpChannelId", "")),
-                    operation="set_infusion_rate",
-                    rate_mg_h=rate_qty.get("value"),
-                    unit=str(rate_qty.get("unit", "")),
-                    issued_at_h=window.get("issuedAt"),
-                    expires_at_h=window.get("expiresAt"),
-                )
+                order = infusion_order_from_fhir(resource)
                 header_token = self.headers.get("X-Clinician-Approval")
                 approvals.consume(header_token, order, now_h=now_h)
                 state["accepted_orders"] += 1
                 self._reply(
                     201,
                     {
-                        "resourceType": "MedicationRequest",
-                        "status": "active",
-                        "orderDigest": order.digest(),
+                        **resource,
+                        "id": "accepted-lab-order",
+                        "identifier": [
+                            {"system": "urn:eigenscope:lab:order-digest", "value": order.digest()}
+                        ],
                     },
                 )
             except (ValueError, KeyError, IndexError, TypeError, ClinicalOrderRejected) as exc:
@@ -569,17 +674,11 @@ def run_fhir_r4_contract() -> dict[str, Any]:
     thread.start()
     try:
         base = f"http://127.0.0.1:{server.server_port}"
-        valid_body = {
-            "resourceType": "MedicationRequest",
-            "intent": "order",
-            "medicationCodeableConcept": {"text": MEDICATION_CODE},
-            "pumpChannelId": PUMP_CHANNEL_ID,
-            "dosageInstruction": [{"rateQuantity": {"value": 96.0, "unit": "mg/h"}}],
-            "validityWindowHours": {"issuedAt": now_h, "expiresAt": now_h + 1.0},
-        }
+        valid_body = medication_request_for_order(reviewed_order)
         with httpx.Client(timeout=5.0, trust_env=False) as client:
             obs = client.get(f"{base}/fhir/r4/Observation/serum-drug-level")
             obs_json = obs.json()
+            validate_fhir_r4_resource(obs_json)
             # 1) Unapproved MedicationRequest denied
             unapproved = client.post(f"{base}/fhir/r4/MedicationRequest", json=valid_body)
             # 2) Self-authorized field injection denied
@@ -594,6 +693,7 @@ def run_fhir_r4_contract() -> dict[str, Any]:
                 json=valid_body,
                 headers={"X-Clinician-Approval": token},
             )
+            validate_fhir_r4_resource(accepted.json())
             # 4) Replayed clinician sign-off token denied
             replayed = client.post(
                 f"{base}/fhir/r4/MedicationRequest",

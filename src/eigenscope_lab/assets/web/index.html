@@ -163,6 +163,27 @@
             <span id="scope">Actual engine state · Synthetic scenario</span
             ><span id="frame-count">0 frames received</span>
           </div>
+          <section
+            id="rag-benchmark"
+            class="benchmark-output"
+            aria-labelledby="benchmark-title"
+            hidden
+          >
+            <h3 id="benchmark-title">Local retriever comparison</h3>
+            <p id="benchmark-description">
+              Higher nDCG means a more relevant ranking. Lower poison exposure is better.
+            </p>
+            <table aria-labelledby="benchmark-title" aria-describedby="benchmark-description">
+              <thead>
+                <tr>
+                  <th scope="col">Retriever</th>
+                  <th scope="col">nDCG@5</th>
+                  <th scope="col">Poison exposure</th>
+                </tr>
+              </thead>
+              <tbody id="benchmark-rows"></tbody>
+            </table>
+          </section>
           <div id="provider-output" class="provider-output" hidden>
             <p>Observed synthetic response</p>
             <output id="provider-text"></output>

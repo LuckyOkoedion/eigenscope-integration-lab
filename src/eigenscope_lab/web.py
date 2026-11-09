@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
+from .reporting import outcome
+
 SCENARIOS = (
     "robotics",
     "telecom",
@@ -31,36 +33,20 @@ ASSET_ROOT = Path(__file__).parent / "assets" / "web"
 LOGGER = logging.getLogger(__name__)
 
 
-class RunCancelled(Exception):
+class RunCancelled(BaseException):
     """Internal checkpoint signal; simulation contexts retain their cleanup."""
 
 
 def _summarize_failed_checks(checks: list[dict[str, Any]], *, live_mode: bool) -> str:
     failed = [check for check in checks if check.get("passed") is not True]
-    passed_any = any(check.get("passed") is True for check in checks)
-    if live_mode and any(
-        check.get("reason_code") == "SURFACE_DENIED_UNTIL_QUALIFIED"
-        or check.get("error_code") == "CORE_AUTHORITY_UNAVAILABLE"
-        or check.get("http_status") == 503
-        for check in failed
-    ):
-        prefix = (
-            "Local engine checks passed; live endpoint checks did not pass"
-            if passed_any
-            else "Live endpoint checks did not pass"
-        )
-        return f"{prefix} because this endpoint is not enabled on the configured service tier (HTTP 503)."
+    if live_mode and any(check.get("http_status") == 503 for check in failed):
+        return "Live endpoint checks did not pass. The configured service returned HTTP 503. Retry the run or check the service status."
     if live_mode and any(check.get("http_status") in {401, 403} for check in failed):
         return "Live authorization checks did not pass. Verify ORTHOCORE_API_KEY permissions."
     if live_mode and any(check.get("http_status") == 429 for check in failed):
         return "Live rate-limit checks did not pass (HTTP 429). Wait briefly and run again."
     if live_mode and any(check.get("error_code") == "INVALID_RESPONSE_SCHEMA" for check in failed):
-        return (
-            "Local engine checks passed; live SDK response validation flagged a wire-schema "
-            "version mismatch with the configured service."
-            if passed_any
-            else "Live SDK response validation flagged a wire-schema version mismatch with the configured service."
-        )
+        return "The live response did not match the SDK contract. Review the named checks and installed SDK version."
     privacy_ok = any(
         check.get("name") == "private_values_absent_from_outbound_core"
         and check.get("passed") is True
@@ -81,7 +67,7 @@ def _summarize_failed_checks(checks: list[dict[str, Any]], *, live_mode: bool) -
         for check in failed
     )
     if live_mode and rag_flagged:
-        return "Local RAG quarantine and live receipt verification completed; live SIR threshold calibration flagged passage exposure for review."
+        return "RAG checks did not pass. Review the named checks and download the run report for details."
     return (
         "Some scenario checks did not pass. Review the highlighted items below "
         "or download the run report for details."
@@ -176,9 +162,12 @@ class LabSession:
     def _run(self, scenario: str, seed: int, pace_ms: int) -> None:
         start = time.perf_counter()
 
-        def on_frame(frame: dict[str, Any]) -> None:
+        def check_cancelled() -> None:
             if self.stop.is_set() or self.closed.is_set():
                 raise RunCancelled
+
+        def on_frame(frame: dict[str, Any]) -> None:
+            check_cancelled()
             # Copy finite JSON only; worker objects are never retained in a frame.
             payload = json.loads(json.dumps(frame, allow_nan=False))
             with self.condition:
@@ -198,12 +187,31 @@ class LabSession:
             arguments: dict[str, Any] = {"seed": seed}
             if "on_frame" in inspect.signature(runner).parameters:
                 arguments["on_frame"] = on_frame
-            result = runner(**arguments)
+            if "check_cancelled" in inspect.signature(runner).parameters:
+                arguments["check_cancelled"] = check_cancelled
+            check_cancelled()
+            candidate = runner(**arguments)
+            if not isinstance(candidate, dict):
+                raise ValueError("The scenario result must be an object")
+            # A bad adapter result must not break /api/state or the SSE stream,
+            # or leave the browser displaying a successful but unusable run.
+            candidate = {key: value for key, value in candidate.items() if key != "telemetry"}
+            candidate = json.loads(json.dumps(candidate, allow_nan=False))
+            if not isinstance(candidate.get("checks"), list) or any(
+                not isinstance(check, dict) for check in candidate["checks"]
+            ):
+                raise ValueError("The scenario result must contain a list of checks")
+            result = candidate
             checks = result.get("checks", [])
-            passed = bool(checks) and all(check.get("passed") is True for check in checks)
+            result_status = outcome(result)
+            passed = result_status == "PASS"
             status = "cancelled" if self.stop.is_set() else "completed" if passed else "failed"
             if status == "failed":
-                error = _summarize_failed_checks(checks, live_mode=self.live_mode)
+                error = (
+                    "This scenario could not finish. Check the terminal diagnostics and installed scenario dependencies, then try again."
+                    if result.get("status") in {"BLOCKED", "ERROR"}
+                    else _summarize_failed_checks(checks, live_mode=self.live_mode)
+                )
         except RunCancelled:
             status = "cancelled"
         except Exception:

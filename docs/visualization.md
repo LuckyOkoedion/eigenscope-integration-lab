@@ -7,7 +7,7 @@ uv sync --frozen --all-extras
 uv run eigenscope-lab serve --host 127.0.0.1 --port 8765
 ```
 
-Open `http://127.0.0.1:8765` in a browser. Select Robotics, Telecom, Oil & Gas, Healthcare, Multimodal, Model provider, MCP tools or Coding workflow, choose a seed, and select **Run**. By default the dashboard runs offline and needs no API credentials; pass `--live` to run against your configured EigenScope service using server-side `ORTHOCORE_API_KEY`.
+Open `http://127.0.0.1:8765` in a browser. Select Robotics, Telecom, Oil & Gas, Healthcare, Multimodal, RAG defense, Model provider, MCP tools or Coding workflow, choose a seed, and select **Run**. By default the dashboard runs offline and needs no API credentials; pass `--live` to run against your configured EigenScope service using server-side `ORTHOCORE_API_KEY`. The execution mode stays visible in the header on desktop and mobile.
 
 Run guidance explains the next step as a scenario starts, runs, stops or finishes. **Passed** means all returned checks passed. **Run again** repeats the selected scenario; **Reset view** clears a finished run's presentation. On mobile, **Scenarios** displays the current selection. Escape closes the menu and returns keyboard focus to its button.
 
@@ -18,6 +18,7 @@ The visualization follows measurements from the installed engines:
 - **Oil & Gas:** Receiver pressure and high-high threshold, inlet/outlet flow, effective compressor load and independent shutdown state. The pressure trace follows each operating phase. An approved load-change phase, rejected proposals, an underreported pressure sensor and stale data exercise separate boundaries.
 - **Healthcare:** Central and peripheral drug compartments, serum concentration against the toxic ceiling, clinician-reviewed infusion titration, loopback FHIR R4 order checks and independent pump clamping under renal impairment or stale laboratory timestamps.
 - **Multimodal:** Stage-by-stage container framing, audio/visual span masking and SHA-256 byte-exact restoration across PCM16 WAV, RGBA PNG and multi-frame OCVC clips, followed by tamper, replay and dimension negative controls.
+- **RAG defense:** Passage ingestion, SIR admission and quarantine counts, clean retrieval relevance across six retrieval methods, poison exposure and single-use citation receipt checks. The local retrieval benchmark and configured live service report their own observed checks.
 - **Provider:** Actual SDK-parsed SSE chunks, cumulative UTF-8 response bytes, observed arrival times, finish and usage events, and a bounded preview of the synthetic response. The cancellation note appears only after the local HTTP server observes the upstream disconnect. Subsequent fault-check phases preserve the observed stream timeline.
 - **Tools and coding:** Checkpoint events after actual MCP subprocess or Git/test operations. The diagram updates as each operation completes.
 
@@ -25,7 +26,7 @@ The visualization follows measurements from the installed engines:
 
 **Stop** requests cancellation at the next simulator checkpoint. Native subprocess work may finish its bounded operation before the next checkpoint; the UI displays **Stopping** until the worker exits. **Reset view** clears the current presentation after a run ends. Recent-run summaries remain available for the server session. Completed runs can be downloaded as JSON.
 
-The interface supports light and dark themes, keyboard controls, a compact scenario menu, responsive diagram layouts and text equivalents for the latest measurements. Charts redraw only when real telemetry arrives. There are no remote fonts, CDNs or decorative motion dependencies.
+The interface supports light and dark themes, keyboard controls, a compact scenario menu, responsive diagram layouts and text equivalents for the latest measurements. The theme control also works when browser storage is disabled; in that case, the choice lasts for the current page. Charts redraw only when real telemetry arrives. There are no remote fonts, CDNs or decorative motion dependencies.
 
 The server binds only to loopback by default. The Docker distribution explicitly enables an internal `0.0.0.0` bind so Docker can forward the port; its published port must remain `127.0.0.1:8765:8765`. This explicit mode retains the same loopback Host and browser-Origin checks and does not permit arbitrary network addresses. It exposes fixed assets and small JSON actions, admits one active simulation, keeps a maximum of 512 replay events and 20 history summaries, limits concurrent event streams, and rejects unexpected credential fields from browser requests. It is a local developer tool, not a multi-user hosted service.
 

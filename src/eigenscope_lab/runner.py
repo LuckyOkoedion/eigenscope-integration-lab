@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import shutil
+from collections.abc import Callable
 from typing import Any
 
 SCENARIOS = {
@@ -19,7 +21,12 @@ SCENARIOS = {
 }
 
 
-def run_scenario(name: str, seed: int) -> dict[str, Any]:
+def run_scenario(
+    name: str,
+    seed: int,
+    *,
+    on_frame: Callable[[dict[str, Any]], None] | None = None,
+) -> dict[str, Any]:
     module, function, extra = SCENARIOS[name]
     if name == "coding" and shutil.which("git") is None:
         return {
@@ -32,7 +39,11 @@ def run_scenario(name: str, seed: int) -> dict[str, Any]:
         }
     try:
         implementation = importlib.import_module(f"eigenscope_lab.simulators.{module}")
-        return getattr(implementation, function)(seed=seed)
+        runner = getattr(implementation, function)
+        arguments: dict[str, Any] = {"seed": seed}
+        if on_frame is not None and "on_frame" in inspect.signature(runner).parameters:
+            arguments["on_frame"] = on_frame
+        return runner(**arguments)
     except Exception as exc:
         # Adapters may wrap a lazy import failure with setup guidance. Preserve
         # prerequisite attribution while keeping unrelated bugs as harness errors.

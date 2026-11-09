@@ -64,9 +64,27 @@ The default run emits 112 frames covering 28 simulated hours:
 `run_fhir_r4_contract()` starts an ephemeral `127.0.0.1:0` HTTP server speaking
 `application/fhir+json`:
 
-- `GET /fhir/r4/Observation/serum-drug-level` returns a LOINC-coded trough
-  `Observation` with UCUM `mg/L` units.
+- `GET /fhir/r4/Observation/serum-drug-level` returns a LOINC-coded serum
+  `Observation` with UCUM `mg/L` units, a patient reference and `effectiveDateTime`.
 - `POST /fhir/r4/MedicationRequest` validates schema, channel allowlist, unit,
   validity window and single-use `X-Clinician-Approval` digest binding,
   rejecting unapproved, field-injected and replayed requests with `422`
   `OperationOutcome`.
+
+Orders use standard `status`, `intent`, `subject`, medication coding,
+`supportingInformation` for the pump device, `dosageInstruction.doseAndRate`
+for the UCUM `mg/h` rate, and `timing.repeat.boundsPeriod` for the validity
+window. The scenario maps simulation hours to a fixed UTC epoch, keeping
+wire resources deterministic while preserving proper FHIR dateTime values.
+
+Each resource is validated offline with `jsonschema` against the complete,
+unmodified [HL7 FHIR R4 JSON schema](https://hl7.org/fhir/R4/downloads.html),
+bundled with its [source and attribution](../../src/eigenscope_lab/assets/fhir/).
+The local profile then checks the selected patient, pump, medication, units,
+single dosage and bounded validity window. Approval consumption is atomic
+across concurrent requests.
+
+References: [HL7 MedicationRequest](https://hl7.org/fhir/R4/medicationrequest.html),
+[Dosage](https://hl7.org/fhir/R4/dosage.html),
+[Observation](https://hl7.org/fhir/R4/observation.html), and
+[LOINC 20578-1](https://loinc.org/20578-1/).

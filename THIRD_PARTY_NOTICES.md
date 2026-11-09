@@ -9,6 +9,8 @@ Dependencies retain their upstream licenses. Most are downloaded from their orig
 | SimPy | Actual discrete-event scheduling and queues | [simpy](https://gitlab.com/team-simpy/simpy), MIT |
 | CoolProp | Methane thermophysical properties and equation of state | [CoolProp](https://github.com/CoolProp/CoolProp), MIT |
 | SciPy | Transient mass-balance integration and event location | [SciPy](https://github.com/scipy/scipy), BSD-3-Clause |
+| jsonschema | Offline validation of healthcare resources | [python-jsonschema/jsonschema](https://github.com/python-jsonschema/jsonschema), MIT |
+| HL7 FHIR R4 JSON schema | Complete resource/type definitions for healthcare validation | [HL7 FHIR R4 downloads](https://hl7.org/fhir/R4/downloads.html), CC0; unmodified archive and attribution in [assets/fhir](src/eigenscope_lab/assets/fhir/) |
 | asyncua | Actual OPC UA server/client and authorization checks | [FreeOpcUa/opcua-asyncio](https://github.com/FreeOpcUa/opcua-asyncio), LGPL-3.0-or-later |
 | OpenAI Python SDK | Real HTTP/SSE client against the local provider fixture | [openai/openai-python](https://github.com/openai/openai-python), Apache-2.0 |
 | MCP Python SDK | Actual stdio protocol client/server | [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk), MIT |

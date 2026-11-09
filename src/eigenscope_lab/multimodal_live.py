@@ -11,17 +11,26 @@ from __future__ import annotations
 import base64
 import secrets
 import time
+from collections.abc import Callable
 from typing import Any
 
 from . import __version__
 from .live import (
     ServiceResponseContractError,
     _check,
+    _checkpoint,
     _record_exception,
     describe_suite_guidance,
     safe_error,
 )
-from .simulators.multimodal import build_synthetic_media_bundle, sha256_prefixed
+from .simulators.multimodal import (
+    MediaContractRejected,
+    build_synthetic_media_bundle,
+    decode_ocvc_rgba,
+    decode_png_rgba,
+    decode_wav_pcm16,
+    sha256_prefixed,
+)
 
 CONTRACT_VERSION = "2026-10-18.v1"
 MULTIMODAL_SELECTIONS = (
@@ -104,7 +113,6 @@ def _extract_rehydrated_b64(data: dict[str, Any]) -> str:
 def _modality_specs(seed: int) -> list[dict[str, Any]]:
     bundle = build_synthetic_media_bundle(seed=seed)
     ibox = bundle["image_box"]
-    vbox0 = bundle["video_boxes"][0]
     return [
         {
             "id": "multimodal-audio",
@@ -119,10 +127,12 @@ def _modality_specs(seed: int) -> list[dict[str, Any]]:
                 "channels": 1,
                 "transcript": "Intake note for Elena Rostova MRN-7741092: BP 124/78, repeat labs in 48 hours.",
                 "transcript_words": [
-                    {"word": "Elena", "start_sample": 8800, "end_sample": 12480},
-                    {"word": "Rostova", "start_sample": 12640, "end_sample": 16640},
+                    {"word": "Elena", "start_sample": 8800, "end_sample": 11200},
+                    {"word": "Rostova", "start_sample": 11200, "end_sample": 14400},
+                    {"word": "MRN-7741092", "start_sample": 14400, "end_sample": 16800},
                 ],
             },
+            "public_audio_slices": bundle["audio_task_slices"],
         },
         {
             "id": "multimodal-image",
@@ -162,20 +172,110 @@ def _modality_specs(seed: int) -> list[dict[str, Any]]:
                 "ocr_regions": [
                     {
                         "text": "Badge ID BADGE-99412",
-                        "x": vbox0.x,
-                        "y": vbox0.y,
-                        "width": vbox0.width,
-                        "height": vbox0.height,
-                        "frame": 0,
+                        "x": box.x,
+                        "y": box.y,
+                        "width": box.width,
+                        "height": box.height,
+                        "frame": frame,
                     }
+                    for frame, box in enumerate(bundle["video_boxes"])
                 ],
             },
         },
     ]
 
 
+def _projection_checks(
+    spec: dict[str, Any], projected: bytes, measurements: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """Decode actual output and observe annotated transformations and public signal."""
+    import numpy as np
+
+    payload = spec["input_payload"]
+    measurements = measurements if measurements is not None else {}
+    try:
+        if spec["modality"] == "audio_wav":
+            raw, raw_rate, raw_channels = decode_wav_pcm16(spec["raw_bytes"])
+            masked, rate, channels = decode_wav_pcm16(projected)
+            geometry_ok = (
+                rate == raw_rate and channels == raw_channels and masked.shape == raw.shape
+            )
+            spans = payload["transcript_words"]
+            transformed = geometry_ok and all(
+                not bool(
+                    np.array_equal(
+                        masked[span["start_sample"] : span["end_sample"]],
+                        raw[span["start_sample"] : span["end_sample"]],
+                    )
+                )
+                for span in spans
+            )
+            public_signal = geometry_ok and all(
+                end > start and bool(np.any(masked[start:end] != 0))
+                for start, end in spec["public_audio_slices"]
+            )
+            if geometry_ok:
+                measurements["annotated_audio_changed_samples"] = sum(
+                    int(
+                        np.count_nonzero(
+                            masked[span["start_sample"] : span["end_sample"]]
+                            != raw[span["start_sample"] : span["end_sample"]]
+                        )
+                    )
+                    for span in spans
+                )
+                energy_ratios, correlations = [], []
+                for start, end in spec["public_audio_slices"]:
+                    a, b = raw[start:end].astype(float), masked[start:end].astype(float)
+                    energy = float(np.sum(a**2))
+                    energy_ratios.append(float(np.sum(b**2) / energy) if energy else None)
+                    correlations.append(
+                        float(np.corrcoef(a, b)[0, 1]) if a.std() and b.std() else None
+                    )
+                measurements["public_audio_energy_ratios"] = energy_ratios
+                measurements["public_audio_correlations"] = correlations
+        else:
+            decoder = decode_png_rgba if spec["modality"] == "image_frame" else decode_ocvc_rgba
+            raw = decoder(spec["raw_bytes"])
+            masked = decoder(projected)
+            geometry_ok = masked.shape == raw.shape
+            transformed = geometry_ok
+            public_signal = geometry_ok
+            if geometry_ok:
+                raw_frames = raw[None, ...] if raw.ndim == 3 else raw
+                masked_frames = masked[None, ...] if masked.ndim == 3 else masked
+                public = np.ones(raw_frames.shape[:-1], dtype=bool)
+                for region in payload["ocr_regions"]:
+                    frame, x, y = region["frame"], region["x"], region["y"]
+                    width, height = region["width"], region["height"]
+                    block = masked_frames[frame, y : y + height, x : x + width]
+                    source = raw_frames[frame, y : y + height, x : x + width]
+                    transformed = transformed and not bool(np.array_equal(block, source))
+                    public[frame, y : y + height, x : x + width] = False
+                observed = masked_frames[public, :3]
+                public_signal = len(observed) > 0 and len(np.unique(observed, axis=0)) > 1
+                measurements["public_pixel_count"] = int(np.count_nonzero(public))
+                measurements["public_pixels_changed"] = int(
+                    np.count_nonzero(np.any(masked_frames[public] != raw_frames[public], axis=-1))
+                )
+        return [
+            _check("projected_media_container_and_geometry_valid", geometry_ok),
+            _check("annotated_media_spans_transformed", transformed),
+            _check("public_media_signal_present", public_signal),
+        ]
+    except (MediaContractRejected, ValueError, IndexError) as exc:
+        raise ServiceResponseContractError(
+            "Projected media violates the container contract"
+        ) from exc
+
+
 def _run_modality_case(
-    spec: dict[str, Any], *, http: Any, base_url: str, key: str
+    spec: dict[str, Any],
+    *,
+    http: Any,
+    base_url: str,
+    key: str,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {
         "suite": f"api:{spec['id']}",
@@ -183,13 +283,18 @@ def _run_modality_case(
         "engine": "public /v1 multimodal HTTP contract + SHA-256 round-trip verifier",
         "checks": [],
         "metrics": {"raw_media_bytes": len(spec["raw_bytes"])},
-        "scope": "Actual hosted multimodal endpoint; deterministic synthetic media; single-use ticket cleanup.",
+        "scope": "Actual hosted multimodal endpoint; decoded span transformations, public signal presence and exact owned restoration.",
     }
     checks = row["checks"]
+    payload = spec["input_payload"]
+    for field in ("width", "height", "frame_count", "sample_rate_hz", "channels"):
+        if field in payload:
+            row["metrics"][field] = payload[field]
     ticket: str | None = None
     consumed = False
     started = time.perf_counter()
     try:
+        _checkpoint(check_cancelled)
         dec_id = _uuid_v7()
         t0 = time.perf_counter()
         dec_res = http.post(
@@ -240,8 +345,10 @@ def _run_modality_case(
                 and sha256_prefixed(projected_bytes) != sha256_prefixed(spec["raw_bytes"]),
             )
         )
+        checks.extend(_projection_checks(spec, projected_bytes, row["metrics"]))
 
         task_core = str(dec_data.get("task_core") or spec["task_prompt"])
+        _checkpoint(check_cancelled)
         reh_id = _uuid_v7()
         t1 = time.perf_counter()
         reh_res = http.post(
@@ -257,6 +364,7 @@ def _run_modality_case(
                 "consume_and_scrub_vault_ticket": True,
             },
         )
+        row["http_status"] = reh_res.status_code
         row["metrics"]["rehydrate_http_wall_ms"] = round((time.perf_counter() - t1) * 1000, 3)
         reh_data = _parse_json(reh_res)
         if reh_res.status_code != 200:
@@ -284,6 +392,7 @@ def _run_modality_case(
         checks.append(_check("media_ticket_marked_scrubbed", scrubbed_flag))
 
         # Replay negative control: second rehydrate with same single-use ticket must return 410
+        _checkpoint(check_cancelled)
         replay_id = _uuid_v7()
         replay_res = http.post(
             f"{base_url}/v1/rehydrate/media",
@@ -298,6 +407,7 @@ def _run_modality_case(
                 "consume_and_scrub_vault_ticket": True,
             },
         )
+        row["http_status"] = replay_res.status_code
         replay_body: dict[str, Any] = {}
         try:
             parsed_replay = replay_res.json()
@@ -348,10 +458,13 @@ def run_multimodal_live(
     repeat: int = 1,
     timeout: float = 15.0,
     http_client: Any = None,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> list[dict[str, Any]]:
     """Run selected live multimodal HTTP cases with deterministic synthetic containers."""
     if selection not in MULTIMODAL_SELECTIONS:
         raise ValueError(f"Unsupported multimodal selection: {selection}")
+    if type(repeat) is not int or not 1 <= repeat <= 10:
+        raise ValueError("repeat must be an integer from 1 to 10")
     try:
         import httpx
     except ImportError as exc:
@@ -362,7 +475,13 @@ def run_multimodal_live(
     if http_client is not None:
         for iteration in range(repeat):
             for spec in specs:
-                row = _run_modality_case(spec, http=http_client, base_url=base_url, key=key)
+                row = _run_modality_case(
+                    spec,
+                    http=http_client,
+                    base_url=base_url,
+                    key=key,
+                    check_cancelled=check_cancelled,
+                )
                 row["iteration"] = iteration + 1
                 rows.append(row)
         return rows
@@ -370,7 +489,9 @@ def run_multimodal_live(
     with httpx.Client(timeout=timeout, follow_redirects=False, trust_env=False) as http:
         for iteration in range(repeat):
             for spec in specs:
-                row = _run_modality_case(spec, http=http, base_url=base_url, key=key)
+                row = _run_modality_case(
+                    spec, http=http, base_url=base_url, key=key, check_cancelled=check_cancelled
+                )
                 row["iteration"] = iteration + 1
                 rows.append(row)
     return rows

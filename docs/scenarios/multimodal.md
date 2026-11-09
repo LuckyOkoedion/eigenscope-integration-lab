@@ -20,14 +20,14 @@ uv run --frozen pytest tests/test_multimodal.py
 | Modality | Container | Local validation contract |
 | --- | --- | --- |
 | Audio (`audio_wav`) | `RIFF/WAVE` 16-bit linear PCM | `16,000–48,000 Hz`, 1–2 channels, DFT Parseval energy identity and SciPy STFT windowing |
-| Image (`image_frame`) | `PNG` 8-bit non-interlaced RGBA | Signature, `IHDR`/`IDAT`/`IEND` structure, per-chunk IEEE CRC-32, `1..4096` px per side |
+| Image (`image_frame`) | `PNG` 8-bit non-interlaced RGBA | Ordered critical chunks, contiguous `IDAT`, per-chunk IEEE CRC-32, filters `0..4`, bounded zlib inflation, `1..4096` px per side |
 | Video (`video_clip`) | `OCVC v1` raw RGBA clip | `OCVC\x01\x00` + big-endian `(frames, width, height)`, `1..128` frames, up to `1280×720` |
 
 ## Six verification phases
 
 1. **`audio-framing`** — Decodes a deterministic `1.5 s` `16 kHz` mono PCM16
    recording, checks Discrete Fourier Transform Parseval energy conservation
-   (`relative error < 1e-12`) and STFT magnitude, and zeroes the declared speech
+   (`relative error < 1e-12`) and STFT magnitude, and zeroes the declared signal
    span while preserving surrounding task audio samples bit-for-bit.
 2. **`audio-reconstruction`** — Restores the original WAV container through a
    single-use local fixture handle and verifies SHA-256 equality.
@@ -36,12 +36,24 @@ uv run --frozen pytest tests/test_multimodal.py
    unchanged.
 4. **`image-reconstruction`** — Restores the original PNG bytes and verifies
    SHA-256 equality.
-5. **`video-tracking`** — Masks a translating badge bounding box across 6 video
+5. **`video-tracking`** — Masks supplied translating badge boxes across 6 video
    frames while preserving stationary equipment status pixels, then verifies
    SHA-256 clip restoration.
 6. **`tamper-and-ceiling-controls`** — Verifies that handle replay, 1-byte media
    tampering, corrupted PNG CRC-32 chunks, oversized dimensions (`> 4096` px or
    `> 128` frames) and out-of-range sample rates (`8 kHz`) are rejected.
+
+The synthetic audio contains tones, and the image/video fixtures supply the
+intervals and boxes used by their masking controls. These checks isolate codec,
+masking, task-region preservation and restoration behavior. Live protection is
+tested through the SDK/API workflow below. Restoration handles are digest-bound
+and consumed atomically across concurrent requests.
+
+The PNG decoder follows the [W3C PNG specification](https://www.w3.org/TR/png-3/):
+it accepts all five standard row filters, rejects duplicate/out-of-order critical
+chunks and trailing compressed streams, and limits decompressed bytes to the
+declared geometry. PCM16 encoding rejects incomplete stereo frames, noninteger
+samples and out-of-range values instead of silently wrapping them.
 
 ## Live HTTP endpoints
 

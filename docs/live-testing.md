@@ -42,6 +42,8 @@ uv run --frozen eigenscope-lab live --repeat 3 --timeout 15 --output results/rep
 
 Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `healthcare`, `rag`, `email` and `unicode`. Multimodal HTTP endpoints (`/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media`) can be selected explicitly with `--case multimodal`, `multimodal-audio`, `multimodal-image` or `multimodal-video`. Requests run sequentially. Repeat applies to SDK and multimodal cases, is capped at ten and leaves the workbench controls as a single pass.
 
+`--case tools` is an alias for `--case tool-injection`, matching the local `eigenscope-lab run tools` scenario. Both live names run the same SDK workflow and report the canonical `tool-injection` case.
+
 ## Automatic zero-tag privacy challenges
 
 Use the opt-in challenge group to test beyond the sample workflows:
@@ -64,7 +66,7 @@ An empty or error response cannot pass the privacy check. Mapping handles stay i
 
 Answer tasks cover decimals, unit conversion, ranges, literal output, structured JSON and conditional logic. The actual workbench answer is compared with the fixed expected result; no echo provider supplies the answer. JSON answers reject duplicate keys, extra keys and wrong value types.
 
-`all` runs the 20-suite sample set (`CASES`, `workbench` and `multimodal`); challenges run when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. Unit tests and default `serve` make no live calls; `serve --live` uses server-side `ORTHOCORE_API_KEY`.
+`all` runs 23 suites: nine domain SDK workflows, nine workbench controls, three media workflows, and RAG through both the official SDK and HTTP API. `--case rag` selects the RAG text workflow and both retrieval pipelines, including the SDK's `rag_ingest`, `rag_retrieve` and `rag_evaluate` methods. Challenges run when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. Unit tests and default `serve` make no live calls; `serve --live` uses server-side `ORTHOCORE_API_KEY`.
 
 Timings identify SDK, local-provider and complete-workflow boundaries. SDK wall time includes serialization, network requests, service execution and response validation. Reports record the sample count; compare runs using the same client, configuration and environment.
 

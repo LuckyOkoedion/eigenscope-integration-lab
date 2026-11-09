@@ -18,6 +18,7 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --frozen --all-extras --no-dev --no-editable --no-install-project
 COPY src/ ./src/
 RUN uv sync --frozen --all-extras --no-dev --no-editable \
+    && python -c "import asyncio; from eigenscope_lab.simulators.oil_gas_opcua import _prepare_standard_address_space_shelf; asyncio.run(_prepare_standard_address_space_shelf())" \
     && useradd --system --uid 10001 --create-home lab \
     && mkdir -p /app/results && chown 10001:10001 /app/results
 USER 10001:10001
