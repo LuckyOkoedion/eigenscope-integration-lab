@@ -9,6 +9,7 @@ Temporary private keys are removed when the fixture exits.
 from __future__ import annotations
 
 import asyncio
+import dbm
 import hashlib
 import math
 import os
@@ -48,6 +49,16 @@ def _standard_address_space_shelf() -> Path:
         / f"asyncua-{asyncua.__version__}"
         / "standard-address-space"
     )
+
+
+async def _prepare_standard_address_space_shelf() -> None:
+    shelf = _standard_address_space_shelf()
+    shelf.parent.mkdir(parents=True, exist_ok=True)
+    await Server().init(shelf)
+    if not dbm.whichdb(str(shelf)):
+        raise RuntimeError("Could not prepare the OPC UA namespace cache.")
+    if not shelf.is_file() and not shelf.with_suffix(".db").is_file():
+        shelf.touch(mode=0o644)
 
 
 @dataclass(frozen=True)

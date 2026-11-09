@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import dbm
+import dbm.dumb
 import hashlib
 import os
 import stat
@@ -212,13 +214,25 @@ def test_namespace_cache_is_scoped_to_installed_engine_version(monkeypatch, tmp_
 
 
 @pytest.mark.industry
-def test_readonly_standard_namespace_cache_preserves_actual_wire_contract(monkeypatch, tmp_path):
+@pytest.mark.parametrize("storage", ["platform_default", "dumb"])
+def test_readonly_standard_namespace_cache_preserves_actual_wire_contract(
+    monkeypatch, tmp_path, storage
+):
     shelf = tmp_path / "namespace"
-    asyncio.run(oil_gas_opcua.Server().init(shelf))
+    default_dbm_open = dbm.open
+    if storage == "dumb":
+        monkeypatch.setattr(dbm, "open", dbm.dumb.open)
+    monkeypatch.setattr(oil_gas_opcua, "_standard_address_space_shelf", lambda: shelf)
+    asyncio.run(oil_gas_opcua._prepare_standard_address_space_shelf())
+    if storage == "dumb":
+        assert dbm.whichdb(str(shelf)) == "dbm.dumb"
+        assert shelf.is_file()
+        assert shelf.with_suffix(".dat").is_file()
+        assert shelf.with_suffix(".dir").is_file()
+        monkeypatch.setattr(dbm, "open", default_dbm_open)
     files = list(tmp_path.iterdir())
     assert files
     original = {path.name: path.read_bytes() for path in files}
-    monkeypatch.setattr(oil_gas_opcua, "_standard_address_space_shelf", lambda: shelf)
     for path in files:
         path.chmod(0o444)
     try:

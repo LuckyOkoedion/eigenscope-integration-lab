@@ -18,7 +18,7 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --frozen --all-extras --no-dev --no-editable --no-install-project
 COPY src/ ./src/
 RUN uv sync --frozen --all-extras --no-dev --no-editable \
-    && python -c "import asyncio; from asyncua import Server; from eigenscope_lab.simulators.oil_gas_opcua import _standard_address_space_shelf; shelf = _standard_address_space_shelf(); shelf.parent.mkdir(parents=True, exist_ok=True); asyncio.run(Server().init(shelf))" \
+    && python -c "import asyncio; from eigenscope_lab.simulators.oil_gas_opcua import _prepare_standard_address_space_shelf; asyncio.run(_prepare_standard_address_space_shelf())" \
     && useradd --system --uid 10001 --create-home lab \
     && mkdir -p /app/results && chown 10001:10001 /app/results
 USER 10001:10001
