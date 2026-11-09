@@ -9,6 +9,7 @@ from __future__ import annotations
 import builtins
 import json
 import urllib.error
+from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any
 
@@ -177,6 +178,77 @@ def test_invalid_run_controls_are_configuration_errors(monkeypatch, kwargs):
     monkeypatch.setenv("ORTHOCORE_API_KEY", "fixture-value")
     with pytest.raises(ValueError):
         live.run_live(**kwargs)
+
+
+@pytest.mark.parametrize("selection", ["tools", "tool-injection"])
+def test_tools_cli_names_route_to_the_same_sdk_case(monkeypatch, tmp_path, selection):
+    import socket
+
+    openai = pytest.importorskip("openai")
+    pytest.importorskip("eigenscope_sdk")
+    from eigenscope_lab.simulators import provider
+
+    def forbidden_connection(*_args, **_kwargs):
+        raise AssertionError("Routing checks must not open a connection")
+
+    monkeypatch.setattr(socket.socket, "connect", forbidden_connection)
+    monkeypatch.setenv("ORTHOCORE_API_KEY", "synthetic-key-only")
+
+    class LocalProvider:
+        base_url = "http://127.0.0.1:9/v1"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    @contextmanager
+    def provider_client(**kwargs):
+        try:
+            yield object()
+        finally:
+            kwargs["http_client"].close()
+
+    client_closed = []
+    sdk_client = SimpleNamespace(close=lambda: client_closed.append(True))
+    monkeypatch.setattr(provider, "ProviderServer", LocalProvider)
+    monkeypatch.setattr(openai, "OpenAI", provider_client)
+    monkeypatch.setattr(live, "make_observed_client", lambda *_args, **_kwargs: sdk_client)
+    calls = []
+
+    def execute(case, **kwargs):
+        calls.append((case, kwargs["seed"], kwargs["client"]))
+        return {
+            "suite": "sdk:" + case.id,
+            "checks": [{"name": "selected_workflow", "passed": True}],
+            "metrics": {},
+        }
+
+    monkeypatch.setattr(live, "_sdk_case", execute)
+    destination = tmp_path / "result.json"
+    assert (
+        cli.main(
+            [
+                "live",
+                "--case",
+                selection,
+                "--seed",
+                "37",
+                "--repeat",
+                "2",
+                "--output",
+                str(destination),
+            ]
+        )
+        == 0
+    )
+    canonical = next(case for case in CASES if case.id == "tool-injection")
+    assert calls == [(canonical, 37, sdk_client), (canonical, 37, sdk_client)]
+    assert client_closed == [True]
+    result = json.loads(destination.read_text())
+    assert result["summary"] == {"PASS": 2, "FAIL": 0, "BLOCKED": 0, "ERROR": 0}
+    assert [row["suite"] for row in result["suites"]] == ["sdk:tool-injection"] * 2
 
 
 def test_missing_sdk_dependency_reports_setup_requirement(monkeypatch):

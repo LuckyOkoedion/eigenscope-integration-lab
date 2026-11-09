@@ -42,6 +42,8 @@ uv run --frozen eigenscope-lab live --repeat 3 --timeout 15 --output results/rep
 
 Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `healthcare`, `rag`, `email` and `unicode`. Multimodal HTTP endpoints (`/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media`) can be selected explicitly with `--case multimodal`, `multimodal-audio`, `multimodal-image` or `multimodal-video`. Requests run sequentially. Repeat applies to SDK and multimodal cases, is capped at ten and leaves the workbench controls as a single pass.
 
+`--case tools` is an alias for `--case tool-injection`, matching the local `eigenscope-lab run tools` scenario. Both live names run the same SDK workflow and report the canonical `tool-injection` case.
+
 ## Automatic zero-tag privacy challenges
 
 Use the opt-in challenge group to test beyond the sample workflows:

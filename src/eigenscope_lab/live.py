@@ -534,6 +534,8 @@ def run_live(
         raise ValueError(
             "Set ORTHOCORE_API_KEY in your environment before running live checks (credentials are never printed)"
         )
+    if case_id == "tools":
+        case_id = "tool-injection"
     challenge_selections = {"challenges", "challenge-tasks", "challenge-privacy"}
     multimodal_selections = {
         "multimodal",
@@ -551,7 +553,7 @@ def run_live(
         raise ValueError(
             "Unknown case; choose all, workbench, challenges, challenge-tasks, challenge-privacy, "
             "multimodal, multimodal-audio, multimodal-image, multimodal-video, "
-            "coding, tool-injection, telecom, robotics, oil-gas, healthcare, rag, email or unicode"
+            "coding, tool-injection (or tools), telecom, robotics, oil-gas, healthcare, rag, email or unicode"
         )
     if case_id in multimodal_selections:
         from .multimodal_live import run_multimodal_live
