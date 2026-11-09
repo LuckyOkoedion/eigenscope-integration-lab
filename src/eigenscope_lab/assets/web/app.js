@@ -35,6 +35,13 @@ const definitions = {
       "Verify container integrity, audio/visual span masking and SHA-256 bit-exact restoration.",
     scope: "In-memory PCM16 WAV, CRC-32 PNG and RGBA video frames",
   },
+  rag: {
+    title: "RAG defense",
+    engine: "NumPy · SciPy SVD · BM25 / RRF / MMR · HTTP citation gate",
+    description:
+      "Inspect corpus ingestion, Subspace Incongruity Ratio (SIR) poison quarantine, 6-retriever nDCG@5 and citation verification.",
+    scope: "Four-subspace BM25/SVD retrieval · Loopback HTTP citation gate",
+  },
   provider: {
     title: "Model provider",
     engine: "OpenAI client · Loopback HTTP / SSE",
@@ -96,6 +103,26 @@ const CHECK_LABELS = {
     "Outbound task text cleared operating command policy",
   provided_task_core_respects_clinical_boundary:
     "Outbound task text cleared clinical command policy",
+  provided_task_core_respects_retrieval_boundary:
+    "Outbound task text cleared retrieval command policy",
+  corpus_ingested_and_subspace_norms_finite: "Corpus ingested & four-subspace norms verified",
+  entangled_baseline_exposes_poison_in_top_k:
+    "Entangled baseline control (poison exposure reproduced)",
+  sir_gate_quarantines_full_and_partial_poison:
+    "SIR gate quarantined full & partial query-poisoned passages",
+  clean_ground_truth_ranked_first_after_disentanglement:
+    "Clean ground-truth passage ranked #1 after disentanglement",
+  six_retriever_benchmark_zero_poison_exposure_and_high_ndcg:
+    "6-retriever benchmark: 0% poison exposure & clean nDCG@5 ≥ 0.95",
+  loopback_citation_gate_accepts_verified_admitted_context:
+    "Citation gate accepted verified admitted passages",
+  loopback_citation_gate_rejects_poison_cross_tenant_and_replay:
+    "Citation gate rejected poison, cross-tenant & receipt replay",
+  rag_ingest_succeeded_and_sealed_receipt_bound: "Live /v1/rag/ingest & Ed25519 sealed receipt",
+  rag_retrieve_succeeded_and_sealed_receipt_bound: "Live /v1/rag/retrieve & Ed25519 sealed receipt",
+  rag_sir_gate_quarantines_poisoned_passages: "Live /v1/rag SIR gate poison quarantine",
+  rag_clean_ground_truth_ranked_first: "Live /v1/rag clean ground-truth top-1 ranking",
+  rag_evaluate_benchmark_zero_poison_exposure: "Live /v1/rag/evaluate 6-retriever poison benchmark",
   live_v1_audio_actual_multimodal_decomposition_succeeded:
     "Live audio endpoint (/v1/decompose/audio)",
   live_v1_image_actual_multimodal_decomposition_succeeded:
@@ -139,6 +166,12 @@ function formatCheckDisplay(check) {
     rawName.startsWith("provided_task_core_respects_")
   ) {
     return `${label} — configure domain instruction policy`;
+  }
+  if (check.error_code === "INVALID_RESPONSE_SCHEMA") {
+    return `${label} — SDK/service schema version mismatch`;
+  }
+  if (rawName.startsWith("rag_") && !check.passed) {
+    return `${label} — SIR threshold review`;
   }
   if (Number.isInteger(check.http_status)) {
     return `${label} — HTTP ${check.http_status}`;
@@ -254,6 +287,7 @@ function updateMetrics() {
       "Do infusion orders require clinician sign-off and halt below the toxic serum ceiling?",
     multimodal:
       "Are sensitive audio/visual spans masked cleanly and restored byte-for-byte via SHA-256?",
+    rag: "Does the SIR gate quarantine query-poisoned passages before synthesis while preserving clean nDCG@5?",
     provider: "When does useful content arrive, and does the stream finish or stop correctly?",
     tools:
       "Which tool actions were permitted, which were denied, and where did untrusted data enter?",
@@ -266,6 +300,7 @@ function updateMetrics() {
     "oil-gas": "Pressure, proposals and shutdown",
     healthcare: "Serum concentration, FHIR orders and pump clamp",
     multimodal: "Media containers, span masking and SHA-256 round-trip",
+    rag: "Subspace Incongruity Ratio (SIR) gate, retrieval ranking & nDCG@5",
     provider: "Content arrival and stream lifecycle",
     tools: "Tool access and trust boundaries",
     coding: "Change, test and workspace isolation",
@@ -401,6 +436,33 @@ function updateMetrics() {
           ? `${frame.rejected_controls} / ${frame.expected_rejected_controls} denied`
           : "Pending final phase",
         "Replay, tamper and dimension bounds",
+      ],
+    ]);
+  } else if (selected === "rag") {
+    metrics([
+      [
+        "Corpus / SIR gate",
+        `${frame.searchable_count ?? 0} admitted · ${frame.quarantined_count ?? 0} quarantined`,
+        `${frame.ingested_count ?? 0} passages · θ = ${number(frame.sir_threshold ?? 0.35, 2)}`,
+      ],
+      [
+        "Clean nDCG@5",
+        frame.orthocore_ndcg !== undefined ? number(frame.orthocore_ndcg, 4) : "Pending stage 3",
+        "Subspace-disentangled top-k ranking",
+      ],
+      [
+        "Poison exposure",
+        frame.orthocore_poison_exposure_pct !== undefined
+          ? `${number(frame.orthocore_poison_exposure_pct, 1)}% vs ${number(frame.baseline_poison_exposure_pct ?? 100, 0)}%`
+          : "Pending benchmark",
+        "Disentangled vs entangled baseline",
+      ],
+      [
+        "Citation controls",
+        frame.rejected_controls !== undefined
+          ? `${frame.rejected_controls} / ${frame.expected_rejected_controls} denied`
+          : "Pending final phase",
+        "Poison, cross-tenant & receipt replay",
       ],
     ]);
   } else if (selected === "provider" && providerLatest) {
@@ -884,6 +946,10 @@ function draw() {
     drawMultimodal(compact);
     return;
   }
+  if (selected === "rag") {
+    drawRag(compact);
+    return;
+  }
   if (selected === "tools" || selected === "coding") {
     drawWorkflow(compact);
     return;
@@ -1274,6 +1340,129 @@ function drawMultimodal(compact) {
   canvas.setAttribute(
     "aria-label",
     `Multimodal ${words(frame.phase)}, modality ${words(frame.modality)}, ${frame.container_bytes || 0} bytes, exact roundtrip ${Boolean(frame.exact_roundtrip)}.`,
+  );
+}
+function drawRag(compact) {
+  const W = canvas.width,
+    ink = color("--ink"),
+    muted = color("--muted"),
+    accent = color("--accent"),
+    danger = color("--danger");
+  text(
+    compact
+      ? "RAG DEFENSE · SIR GATE & nDCG@5"
+      : "RAG RETRIEVAL DEFENSE · SUBSPACE INCONGRUITY RATIO (SIR) GATE",
+    28,
+    38,
+    20,
+    ink,
+  );
+  text(
+    `${words(frame.phase)} · ${frame.ingested_count || 0} passages · SIR threshold θ = ${number(frame.sir_threshold ?? 0.35, 2)}`,
+    28,
+    72,
+    compact ? 19 : 18,
+    muted,
+  );
+  const topAdmitted =
+    frame.top_admitted_doc_id || frame.admitted_context?.[0]?.doc_id || "kb_invoice_proration";
+  const stages = [
+    [
+      "Corpus & SIR Gate",
+      `${frame.searchable_count ?? 0} admitted · ${frame.quarantined_count ?? 0} quarantined`,
+      (frame.quarantined_count ?? 0) >= 2 ? "Poison quarantined" : "Scanning corpus…",
+      (frame.quarantined_count ?? 0) >= 2,
+    ],
+    [
+      "Disentangled Top-k",
+      `Rank #1: ${topAdmitted}`,
+      frame.phase === "corpus-ingest" ? "Pending retrieval" : "Clean ground-truth #1",
+      frame.phase !== "corpus-ingest",
+    ],
+    [
+      "Citation & Receipts",
+      frame.rejected_controls !== undefined
+        ? `${frame.rejected_controls}/${frame.expected_rejected_controls} controls denied`
+        : "Loopback HTTP gate",
+      frame.citation_verified ? "Receipt verified ✓" : "Single-use attestation",
+      Boolean(frame.citation_verified),
+    ],
+  ];
+  stages.forEach(([title, sub, statusText, done], idx) => {
+    const stroke = done ? accent : color("--chart");
+    if (compact) {
+      const y = 98 + idx * 84;
+      ctx.fillStyle = color("--surface");
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(28, y, W - 56, 70, 14);
+      ctx.fill();
+      ctx.stroke();
+      text(title, 46, y + 28, 22, ink);
+      text(sub, 46, y + 54, 17, muted);
+      text(statusText, W - 46, y + 40, 18, stroke, "right");
+    } else {
+      const cardW = 300,
+        x = 55 + idx * 335,
+        y = 104;
+      ctx.fillStyle = color("--surface");
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, cardW, 132, 16);
+      ctx.fill();
+      ctx.stroke();
+      text(`0${idx + 1}`, x + 22, y + 32, 17, stroke);
+      text(title, x + 22, y + 62, 22, ink);
+      text(sub, x + 22, y + 90, 14, muted);
+      text(statusText, x + 22, y + 116, 15, stroke);
+      if (idx < 2) line(x + cardW + 6, y + 66, x + cardW + 29, y + 66, color("--line"), 3);
+    }
+  });
+  if (!compact && Array.isArray(frame.benchmark_rows) && frame.benchmark_rows.length) {
+    text("6-RETRIEVER BENCHMARK · CLEAN nDCG@5 vs POISON EXPOSURE", 55, 268, 15, ink);
+    const shortNames = {
+      legacy_bm25: "Legacy BM25",
+      legacy_dense_bi_encoder: "Dense bi-encoder",
+      legacy_hybrid_rrf: "Hybrid RRF",
+      lexical_overlap_filter_tau_0_95: "Lexical filter τ=0.95",
+      mmr_diversity_rerank: "MMR rerank",
+      orthocore_subspace_disentangled: "Subspace + SIR gate",
+    };
+    frame.benchmark_rows.slice(0, 6).forEach((row, i) => {
+      const col = i % 2,
+        rIdx = Math.floor(i / 2);
+      const bx = 55 + col * 515,
+        by = 296 + rIdx * 42;
+      const isClean = Number(row.poison_target_exposure_pct) === 0;
+      text(shortNames[row.retriever] || row.retriever, bx, by, 14, ink);
+      ctx.fillStyle = color("--grid");
+      ctx.fillRect(bx + 150, by - 12, 120, 15);
+      ctx.fillStyle = isClean ? accent : danger;
+      ctx.fillRect(
+        bx + 150,
+        by - 12,
+        Math.max(8, Math.min(1, Number(row.clean_ndcg_at_k || 0)) * 120),
+        15,
+      );
+      text(
+        `nDCG ${number(row.clean_ndcg_at_k, 2)} · ${number(row.poison_target_exposure_pct, 0)}% poison`,
+        bx + 280,
+        by,
+        13,
+        isClean ? accent : danger,
+      );
+    });
+  }
+  const footerText =
+    frame.orthocore_ndcg !== undefined
+      ? `Subspace + SIR gate: clean nDCG@5 = ${number(frame.orthocore_ndcg, 4)} · ${number(frame.orthocore_poison_exposure_pct, 1)}% poison exposure (baseline ${number(frame.baseline_poison_exposure_pct ?? 100, 0)}%)`
+      : `Ingesting passage ${frame.doc_id || ""} · SIR = ${number(frame.sir_score ?? 0, 4)}`;
+  text(footerText, 28, compact ? 404 : 458, compact ? 19 : 17, accent);
+  canvas.setAttribute(
+    "aria-label",
+    `RAG defense ${words(frame.phase)}, ${frame.searchable_count ?? 0} admitted passages, ${frame.quarantined_count ?? 0} quarantined passages, clean nDCG ${number(frame.orthocore_ndcg ?? 1, 4)}.`,
   );
 }
 function drawCompact() {

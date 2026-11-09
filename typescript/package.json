@@ -17,7 +17,7 @@
     "format:check": "prettier --check . ../src/eigenscope_lab/assets/web"
   },
   "dependencies": {
-    "@eigenscope/sdk": "https://eigenscope.guardianai.network/npm/eigenscope-sdk-0.2.6.tgz"
+    "@eigenscope/sdk": "https://eigenscope.guardianai.network/npm/eigenscope-sdk-0.2.7.tgz"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

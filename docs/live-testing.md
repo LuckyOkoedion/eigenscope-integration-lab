@@ -40,7 +40,7 @@ uv run --frozen eigenscope-lab live --case workbench --output results/workbench.
 uv run --frozen eigenscope-lab live --repeat 3 --timeout 15 --output results/repeated.json
 ```
 
-Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `healthcare`, `email` and `unicode`. Multimodal HTTP endpoints (`/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media`) can be selected explicitly with `--case multimodal`, `multimodal-audio`, `multimodal-image` or `multimodal-video`. Requests run sequentially. Repeat applies to SDK and multimodal cases, is capped at ten and leaves the workbench controls as a single pass.
+Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `healthcare`, `rag`, `email` and `unicode`. Multimodal HTTP endpoints (`/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media`) can be selected explicitly with `--case multimodal`, `multimodal-audio`, `multimodal-image` or `multimodal-video`. Requests run sequentially. Repeat applies to SDK and multimodal cases, is capped at ten and leaves the workbench controls as a single pass.
 
 ## Automatic zero-tag privacy challenges
 

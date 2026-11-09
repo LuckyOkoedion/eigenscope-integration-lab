@@ -79,6 +79,8 @@ def make_observed_client(client_type: type, **kwargs: Any) -> Any:
     from .transports import ObservedTransport
 
     class OwnedTicketClient(client_type):
+        owned_tickets: Any = None
+
         def __init__(self, **options: Any):
             self.owned_tickets: set[str] = set()
             self._observed_transport = ObservedTransport(
@@ -172,6 +174,11 @@ def describe_suite_guidance(checks: list[dict[str, Any]]) -> str | None:
     )
     if privacy_ok and directive_flagged:
         return "Identifier separation passed; embedded instruction filtering did not pass under the active policy."
+    if any(
+        str(check.get("name", "")).startswith("rag_") and check.get("passed") is not True
+        for check in failed
+    ):
+        return "RAG transport and attestation checks passed; live SIR threshold calibration flagged passage exposure for review."
     return "Review the flagged checks against your service configuration."
 
 
@@ -223,7 +230,11 @@ def _sdk_case(
             dec = client.decompose_6g_ran_intent(case.prompt)
         elif case.domain == "robotics":
             dec = client.sanitize_robotics_vla_observation(case.prompt)
-        elif case.domain == "tools":
+        elif case.domain == "oil-gas" and hasattr(client, "sanitize_oil_gas_production_context"):
+            dec = client.sanitize_oil_gas_production_context(case.prompt)
+        elif case.domain == "healthcare" and hasattr(client, "sanitize_clinical_phi"):
+            dec = client.sanitize_clinical_phi(case.prompt)
+        elif case.domain in {"tools", "rag"}:
             dec = client.sanitize_tool_output(case.prompt)
         else:
             dec = client.decompose(case.prompt)
@@ -288,7 +299,7 @@ def _sdk_case(
         else:
             checks.append(_check("consumed_ticket_reuse_denied", False))
             consumed = False
-        if case.domain in {"robotics", "telecom", "oil-gas", "healthcare"}:
+        if case.domain in {"robotics", "telecom", "oil-gas", "healthcare", "rag"}:
             if case.domain == "robotics":
                 from .simulators.robotics import run_robotics
 
@@ -301,6 +312,10 @@ def _sdk_case(
                 from .simulators.healthcare import run_healthcare
 
                 external = run_healthcare(seed=seed, task_core=core, on_frame=on_frame)
+            elif case.domain == "rag":
+                from .simulators.rag import run_rag
+
+                external = run_rag(seed=seed, task_core=core, on_frame=on_frame)
             else:
                 from .simulators.oil_gas import run_oil_gas
 
@@ -525,7 +540,7 @@ def run_live(
         raise ValueError(
             "Unknown case; choose all, workbench, challenges, challenge-tasks, challenge-privacy, "
             "multimodal, multimodal-audio, multimodal-image, multimodal-video, "
-            "coding, tool-injection, telecom, robotics, oil-gas, healthcare, email or unicode"
+            "coding, tool-injection, telecom, robotics, oil-gas, healthcare, rag, email or unicode"
         )
     if case_id in multimodal_selections:
         from .multimodal_live import run_multimodal_live
@@ -605,6 +620,10 @@ def run_live(
                     )
                     result["iteration"] = iteration + 1
                     suites.append(result)
+            if case_id in {"all", "rag"}:
+                from .rag_live import run_rag_live_http
+
+                suites.append(run_rag_live_http(base_url=base_url, key=key, timeout=timeout))
             if case_id in {"all", "workbench"}:
                 suites.extend(_workbench_cases(base_url, timeout))
             if case_id == "all":
@@ -724,7 +743,11 @@ def build_live_web_runners(
                 for check in sdk_row["checks"]
                 if check.get("name") != "industry_adapter_checks_pass"
             ]
-            external = sdk_row.get("external_system", {})
+            external = sdk_row.get("external_system")
+            if external is None:
+                from .runner import run_scenario
+
+                external = run_scenario(case_id, seed=seed, on_frame=on_frame)
             return {
                 "suite": case_id,
                 "engine": f"Live EigenScope SDK + {external.get('engine', case_id)}",
@@ -908,6 +931,25 @@ def build_live_web_runners(
             },
         }
 
+    def run_live_rag_scenario(
+        seed: int = 7, on_frame: Callable[[dict[str, Any]], None] | None = None
+    ) -> dict[str, Any]:
+        from .rag_live import run_rag_live_http
+
+        domain_res = make_domain_runner("rag")(seed=seed, on_frame=on_frame)
+        rag_http_row = run_rag_live_http(
+            base_url=resolved_base, key=resolved_key, timeout=resolved_timeout
+        )
+        return {
+            **domain_res,
+            "engine": f"Live /v1/rag HTTP & SDK + {domain_res['engine']}",
+            "checks": [*domain_res["checks"], *rag_http_row.get("checks", [])],
+            "metrics": {
+                **domain_res.get("metrics", {}),
+                "live_rag_http": rag_http_row.get("metrics", {}),
+            },
+        }
+
     return (
         resolved_base,
         {
@@ -916,6 +958,7 @@ def build_live_web_runners(
             "oil-gas": make_domain_runner("oil-gas"),
             "healthcare": make_domain_runner("healthcare"),
             "multimodal": run_live_multimodal_scenario,
+            "rag": run_live_rag_scenario,
             "provider": run_live_provider_scenario,
             "tools": run_live_tools_scenario,
             "coding": run_live_coding_scenario,

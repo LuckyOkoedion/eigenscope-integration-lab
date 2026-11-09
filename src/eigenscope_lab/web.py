@@ -22,6 +22,7 @@ SCENARIOS = (
     "oil-gas",
     "healthcare",
     "multimodal",
+    "rag",
     "provider",
     "tools",
     "coding",
@@ -53,6 +54,13 @@ def _summarize_failed_checks(checks: list[dict[str, Any]], *, live_mode: bool) -
         return "Live authorization checks did not pass. Verify ORTHOCORE_API_KEY permissions."
     if live_mode and any(check.get("http_status") == 429 for check in failed):
         return "Live rate-limit checks did not pass (HTTP 429). Wait briefly and run again."
+    if live_mode and any(check.get("error_code") == "INVALID_RESPONSE_SCHEMA" for check in failed):
+        return (
+            "Local engine checks passed; live SDK response validation flagged a wire-schema "
+            "version mismatch with the configured service."
+            if passed_any
+            else "Live SDK response validation flagged a wire-schema version mismatch with the configured service."
+        )
     privacy_ok = any(
         check.get("name") == "private_values_absent_from_outbound_core"
         and check.get("passed") is True
@@ -68,6 +76,12 @@ def _summarize_failed_checks(checks: list[dict[str, Any]], *, live_mode: bool) -
     )
     if live_mode and privacy_ok and directive_flagged:
         return "Identifier separation and local safety checks passed; embedded instruction filtering did not pass under the active policy."
+    rag_flagged = any(
+        str(check.get("name", "")).startswith("rag_") and check.get("passed") is not True
+        for check in failed
+    )
+    if live_mode and rag_flagged:
+        return "Local RAG quarantine and live receipt verification completed; live SIR threshold calibration flagged passage exposure for review."
     return (
         "Some scenario checks did not pass. Review the highlighted items below "
         "or download the run report for details."

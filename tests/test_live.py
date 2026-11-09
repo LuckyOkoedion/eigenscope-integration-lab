@@ -83,6 +83,12 @@ class FixtureClient:
     def sanitize_robotics_vla_observation(self, _prompt):
         return self._decompose("sanitize_robotics_vla_observation")
 
+    def sanitize_oil_gas_production_context(self, _prompt):
+        return self._decompose("sanitize_oil_gas_production_context")
+
+    def sanitize_clinical_phi(self, _prompt):
+        return self._decompose("sanitize_clinical_phi")
+
     def rehydrate(self, ticket, output, **_kwargs):
         assert ticket == "vlt_synthetic_owned_fixture"
         if self.restored and not self.allow_reuse:
@@ -542,6 +548,7 @@ def test_validate_live_credentials_and_web_runners_registry():
         "oil-gas",
         "healthcare",
         "multimodal",
+        "rag",
         "provider",
         "tools",
         "coding",

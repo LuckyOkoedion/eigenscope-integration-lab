@@ -15,6 +15,7 @@ SCENARIOS = {
     "oil-gas": ("oil_gas", "run_oil_gas", "oil-gas"),
     "healthcare": ("healthcare", "run_healthcare", "healthcare"),
     "multimodal": ("multimodal", "run_multimodal", "multimodal"),
+    "rag": ("rag", "run_rag", "rag"),
 }
 
 
