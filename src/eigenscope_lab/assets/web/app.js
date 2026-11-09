@@ -85,11 +85,15 @@ function words(value) {
     .replaceAll("_", " ")
     .replaceAll("-", " ");
 }
+function actionTitle(name) {
+  const title = definitions[name].title;
+  return name === "rag" || name === "tools" ? title : title.toLowerCase();
+}
 const CHECK_LABELS = {
   actual_decomposition_succeeded: "Live service decomposition completed",
   private_values_absent_from_outbound_core: "Sensitive identifiers removed before model call",
   task_terms_preserved: "Required task parameters preserved",
-  untrusted_directives_absent: "Embedded untrusted instructions filtered (domain policy)",
+  untrusted_directives_absent: "Embedded instructions filtered",
   provider_received_only_protected_core: "Model provider received protected task text only",
   provider_preserved_symbols_exactly: "Placeholder symbols preserved across model output",
   identifiers_restored_and_ticket_consumed:
@@ -118,20 +122,19 @@ const CHECK_LABELS = {
     "Citation gate accepted verified admitted passages",
   loopback_citation_gate_rejects_poison_cross_tenant_and_replay:
     "Citation gate rejected poison, cross-tenant & receipt replay",
-  rag_ingest_succeeded_and_sealed_receipt_bound: "Live /v1/rag/ingest & Ed25519 sealed receipt",
-  rag_retrieve_succeeded_and_sealed_receipt_bound: "Live /v1/rag/retrieve & Ed25519 sealed receipt",
-  rag_sir_gate_quarantines_poisoned_passages: "Live /v1/rag SIR gate poison quarantine",
-  rag_clean_ground_truth_ranked_first: "Live /v1/rag clean ground-truth top-1 ranking",
-  rag_evaluate_benchmark_zero_poison_exposure: "Live /v1/rag/evaluate 6-retriever poison benchmark",
-  live_v1_audio_actual_multimodal_decomposition_succeeded:
-    "Live audio endpoint (/v1/decompose/audio)",
-  live_v1_image_actual_multimodal_decomposition_succeeded:
-    "Live image endpoint (/v1/decompose/image)",
-  live_v1_video_actual_multimodal_decomposition_succeeded:
-    "Live video endpoint (/v1/decompose/video)",
-  live_v1_audio_authorized_multimodal_access: "Live audio endpoint authorization",
-  live_v1_image_authorized_multimodal_access: "Live image endpoint authorization",
-  live_v1_video_authorized_multimodal_access: "Live video endpoint authorization",
+  rag_ingest_succeeded_and_sealed_receipt_bound: "Live corpus ingestion and receipt checks",
+  rag_retrieve_succeeded_and_sealed_receipt_bound: "Live retrieval and receipt checks",
+  rag_ingest_succeeded_and_receipt_fields_consistent: "Live corpus ingestion and receipt checks",
+  rag_retrieve_succeeded_and_receipt_fields_consistent: "Live retrieval and receipt checks",
+  rag_sir_gate_quarantines_poisoned_passages: "Live poison quarantine",
+  rag_clean_ground_truth_ranked_first: "Live ground-truth ranking",
+  rag_evaluate_benchmark_zero_poison_exposure: "Live six-retriever poison benchmark",
+  live_v1_audio_actual_multimodal_decomposition_succeeded: "Live audio separation",
+  live_v1_image_actual_multimodal_decomposition_succeeded: "Live image separation",
+  live_v1_video_actual_multimodal_decomposition_succeeded: "Live video separation",
+  live_v1_audio_authorized_multimodal_access: "Live audio access",
+  live_v1_image_authorized_multimodal_access: "Live image access",
+  live_v1_video_authorized_multimodal_access: "Live video access",
 };
 function sentenceCase(value) {
   const plain = words(value).trim();
@@ -139,42 +142,30 @@ function sentenceCase(value) {
 }
 function formatCheckDisplay(check) {
   const rawName = String(check.name || "");
-  const label = CHECK_LABELS[rawName] || sentenceCase(rawName);
-  if (check.passed) {
-    return rawName.includes("reuse_denied") && check.http_status === 410
-      ? `${label} — verified HTTP 410 single-use enforcement`
-      : label;
-  }
-  if (
-    check.reason_code === "SURFACE_DENIED_UNTIL_QUALIFIED" ||
-    check.error_code === "CORE_AUTHORITY_UNAVAILABLE" ||
-    check.http_status === 503
-  ) {
-    return `${label} — tier access required · HTTP 503`;
+  const label =
+    CHECK_LABELS[rawName] ||
+    (/^[a-z][a-z0-9_]{0,120}$/.test(rawName) ? sentenceCase(rawName) : "Scenario check");
+  if (check.passed === true) return label;
+  if (check.http_status === 503) {
+    return `${label} — temporarily unavailable. Try again.`;
   }
   if (check.http_status === 401 || check.http_status === 403) {
-    return `${label} — check API key scope · HTTP ${check.http_status}`;
+    return `${label} — check the API key permissions and try again.`;
   }
   if (check.http_status === 429) {
-    return `${label} — rate limit reached · HTTP 429`;
-  }
-  if (check.http_status === 422) {
-    return `${label} — policy threshold review · HTTP 422`;
+    return `${label} — wait a moment and try again.`;
   }
   if (
     rawName === "untrusted_directives_absent" ||
     rawName.startsWith("provided_task_core_respects_")
   ) {
-    return `${label} — configure domain instruction policy`;
+    return `${label} — outbound instructions did not meet this check.`;
   }
   if (check.error_code === "INVALID_RESPONSE_SCHEMA") {
-    return `${label} — SDK/service schema version mismatch`;
-  }
-  if (rawName.startsWith("rag_") && !check.passed) {
-    return `${label} — SIR threshold review`;
+    return `${label} — response format needs attention. Try again.`;
   }
   if (Number.isInteger(check.http_status)) {
-    return `${label} — HTTP ${check.http_status}`;
+    return `${label} — needs attention. Try again.`;
   }
   return label;
 }
@@ -249,7 +240,7 @@ function observedCheck(name) {
 }
 function observedOutcome(name, success = "Passed") {
   const check = observedCheck(name);
-  return !check ? "Awaiting observation" : check.passed ? success : "Needs attention";
+  return !check ? "Awaiting observation" : check.passed === true ? success : "Needs attention";
 }
 function updateWorkflowEvidence() {
   const panel = $("workflow-output");
@@ -277,6 +268,35 @@ function updateWorkflowEvidence() {
       ...after.slice(first, lastAfter).map((line) => "+ " + line),
     ].join("\n");
   }
+}
+const RETRIEVER_NAMES = {
+  legacy_bm25: "BM25",
+  legacy_dense_bi_encoder: "Dense LSA",
+  legacy_hybrid_rrf: "Hybrid RRF",
+  lexical_overlap_filter_tau_0_95: "Lexical filter τ=0.95",
+  mmr_diversity_rerank: "MMR rerank",
+  orthocore_subspace_disentangled: "Subspace + SIR gate",
+};
+function updateRetrievalEvidence() {
+  const rows = frame?.benchmark_rows || state.result?.metrics?.benchmark_rows;
+  const shown = selected === "rag" && Array.isArray(rows) && rows.length > 0;
+  $("rag-benchmark").hidden = !shown;
+  $("benchmark-rows").replaceChildren(
+    ...(shown ? rows : []).map((row) => {
+      const tr = document.createElement("tr"),
+        name = document.createElement("th"),
+        relevance = document.createElement("td"),
+        exposure = document.createElement("td");
+      name.scope = "row";
+      name.textContent = row.display_name || RETRIEVER_NAMES[row.retriever] || words(row.retriever);
+      relevance.textContent = number(row.clean_ndcg_at_k, 4);
+      exposure.textContent = Number.isFinite(row.poison_target_exposure_pct)
+        ? `${number(row.poison_target_exposure_pct, 1)}%`
+        : "—";
+      tr.append(name, relevance, exposure);
+      return tr;
+    }),
+  );
 }
 function updateMetrics() {
   const questions = {
@@ -306,9 +326,18 @@ function updateMetrics() {
     coding: "Change, test and workspace isolation",
   }[selected];
   updateWorkflowEvidence();
+  updateRetrievalEvidence();
   if (!frame) {
+    const emptyOutcome = {
+      idle: ["Awaiting run", "Measurements appear after execution"],
+      running: ["Starting", "Waiting for the first measurement"],
+      cancelling: ["Stopping", "Waiting for the current operation to finish"],
+      cancelled: ["Stopped", "Run again to complete all scenario checks"],
+      failed: ["Needs attention", "Try again to complete the run"],
+      completed: ["Passed", "Review the completed checks below"],
+    }[state.status] || ["Awaiting run", "Measurements appear after execution"];
     metrics([
-      ["Outcome", "Awaiting run", "Measurements appear after execution"],
+      ["Outcome", ...emptyOutcome],
       ["Selected scenario", definitions[selected].title, "Published sample data"],
       ["Playback", "Live measurements", "Display pacing is separate from simulation time"],
       ["Seed", $("seed").value, "Repeatable input"],
@@ -417,13 +446,13 @@ function updateMetrics() {
       ["Container size", `${frame.container_bytes ?? 0} bytes`, modalityContainerNote(frame)],
       [
         "SHA-256 round-trip",
-        frame.live_tier_gated || frame.live_failed
-          ? "Local verified"
-          : frame.exact_roundtrip
-            ? "Bit-exact"
+        frame.exact_roundtrip === true
+          ? "Bit-exact"
+          : frame.live_failed
+            ? "Not completed"
             : "Masked view",
-        frame.live_tier_gated
-          ? "Live endpoint requires tier access"
+        frame.live_endpoint_unavailable
+          ? "Service unavailable. Try again."
           : frame.live_failed
             ? "Review live service check below"
             : frame.exact_roundtrip
@@ -443,7 +472,7 @@ function updateMetrics() {
       [
         "Corpus / SIR gate",
         `${frame.searchable_count ?? 0} admitted · ${frame.quarantined_count ?? 0} quarantined`,
-        `${frame.ingested_count ?? 0} passages · θ = ${number(frame.sir_threshold ?? 0.35, 2)}`,
+        `${frame.ingested_count ?? 0} passages · θ = ${number(frame.sir_threshold, 2)}`,
       ],
       [
         "Clean nDCG@5",
@@ -453,7 +482,7 @@ function updateMetrics() {
       [
         "Poison exposure",
         frame.orthocore_poison_exposure_pct !== undefined
-          ? `${number(frame.orthocore_poison_exposure_pct, 1)}% vs ${number(frame.baseline_poison_exposure_pct ?? 100, 0)}%`
+          ? `${number(frame.orthocore_poison_exposure_pct, 1)}%${Number.isFinite(frame.baseline_poison_exposure_pct) ? ` vs ${number(frame.baseline_poison_exposure_pct, 0)}%` : ""}`
           : "Pending benchmark",
         "Disentangled vs entangled baseline",
       ],
@@ -508,17 +537,17 @@ function updateMetrics() {
       [
         "Injected tool text",
         liveSanitize
-          ? liveSanitize.passed
+          ? liveSanitize.passed === true
             ? "Filtered live"
-            : "Policy review"
+            : "Needs attention"
           : observedOutcome(
               "untrusted_injection_fixture_reaches_boundary",
               "Delivered as untrusted data",
             ),
         liveSanitize
-          ? liveSanitize.passed
-            ? "Protected via sanitize_tool_output"
-            : "Default profile · add tool policy gate"
+          ? liveSanitize.passed === true
+            ? "Embedded instructions filtered before model access"
+            : "Review the highlighted checks"
           : "Sanitization is tested separately in live mode",
       ],
       [
@@ -568,7 +597,7 @@ function selectScenario(name) {
   $("description").textContent = definition.description;
   $("engine-name").textContent = definition.engine;
   $("scope").textContent = definition.scope;
-  $("start").textContent = `Run ${definition.title.toLowerCase()}`;
+  $("start").textContent = `Run ${actionTitle(name)}`;
   $("menu-toggle").textContent = `☰ Scenarios: ${definition.title}`;
   document
     .querySelectorAll("[data-scenario]")
@@ -582,6 +611,8 @@ function selectScenario(name) {
   if (state.scenario !== name) {
     frame = null;
     trace = [];
+    activity = [];
+    activityItem(`${definition.title} is ready to run.`);
     lastPhase = "";
     resetProvider();
     state = {
@@ -605,8 +636,8 @@ function selectScenario(name) {
     $("frame-count").textContent = "0 frames received";
     $("reset").disabled = true;
     $("run-guidance").textContent = state.live_mode
-      ? `Select Run ${definition.title.toLowerCase()} to execute live EigenScope SDK/API + local engine checks.`
-      : `Select Run ${definition.title.toLowerCase()} to begin. Sample data is included; no API key is needed.`;
+      ? `Select Run ${actionTitle(name)} to execute live EigenScope SDK/API + local engine checks.`
+      : `Select Run ${actionTitle(name)} to begin. Sample data is included; no API key is needed.`;
     showError("");
   }
   updateMetrics();
@@ -700,7 +731,7 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
   $("reset").disabled = busy || state.status === "idle";
   $("start").textContent = ["completed", "cancelled", "failed"].includes(state.status)
     ? "Run again"
-    : `Run ${definitions[selected].title.toLowerCase()}`;
+    : `Run ${actionTitle(selected)}`;
   $("seed").disabled = busy;
   $("pacing").disabled = busy;
   document.querySelectorAll("[data-scenario]").forEach((button) => {
@@ -729,15 +760,17 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
   if (state.status === "idle") {
     frame = null;
     trace = [];
+    activity = [];
+    activityItem(`${definitions[selected].title} is ready to run.`);
     resetProvider();
     $("phase").textContent = "Choose Run to begin.";
     $("telemetry").textContent = "No frame received.";
   }
   const checks = state.result?.checks || [];
-  const passedCount = checks.filter((check) => check.passed).length;
+  const passedCount = checks.filter((check) => check.passed === true).length;
   const idleNote = state.live_mode
-    ? `Select Run ${definitions[selected].title.toLowerCase()} to execute live EigenScope SDK/API + local engine checks.`
-    : `Select Run ${definitions[selected].title.toLowerCase()} to begin. Sample data is included; no API key is needed.`;
+    ? `Select Run ${actionTitle(selected)} to execute live EigenScope SDK/API + local engine checks.`
+    : `Select Run ${actionTitle(selected)} to begin. Sample data is included; no API key is needed.`;
   const guidance = {
     idle: idleNote,
     running: state.live_mode
@@ -755,20 +788,24 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
     ? "Checks will appear when the run finishes."
     : state.status === "cancelled"
       ? "This run stopped before its checks finished. Run again to see complete results."
-      : "Run this scenario to see which checks pass and which need attention.";
+      : state.status === "failed"
+        ? "No checks completed. Select Run again to retry."
+        : "Run this scenario to see which checks pass and which need attention.";
   $("check-empty").hidden = checks.length > 0;
   $("check-count").textContent = checks.length
-    ? `${checks.filter((c) => c.passed).length} / ${checks.length} passed`
+    ? `${checks.filter((c) => c.passed === true).length} / ${checks.length} passed`
     : busy
       ? "In progress"
-      : "Awaiting run";
+      : ["failed", "cancelled"].includes(state.status)
+        ? "No completed checks"
+        : "Awaiting run";
   $("checks").replaceChildren(
     ...checks.map((check) => {
       const li = document.createElement("li"),
         mark = document.createElement("span"),
         text = document.createElement("span");
-      mark.className = `check-mark${check.passed ? "" : " failed"}`;
-      mark.textContent = check.passed ? "✓" : "×";
+      mark.className = `check-mark${check.passed === true ? "" : " failed"}`;
+      mark.textContent = check.passed === true ? "✓" : "×";
       text.textContent = formatCheckDisplay(check);
       li.append(mark, text);
       return li;
@@ -777,7 +814,7 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
   $("download").hidden = !state.result;
   if (["completed", "cancelled", "failed"].includes(state.status))
     activityItem(`Run ${state.run_id} ${labels[state.status].toLowerCase()}.`);
-  if (state.error) showError(state.error);
+  showError(state.error ? "We couldn’t complete this run. Try again." : "");
   const history = state.history || [];
   if (history.length)
     $("history").replaceChildren(
@@ -805,14 +842,14 @@ async function action(path, body) {
     });
     const data = await response.json();
     if (generation !== serverGeneration) return;
-    if (!response.ok) throw new Error(data.error || "This action could not complete. Try again.");
+    if (!response.ok) throw new Error("Action could not complete");
     renderState(data);
   } catch (error) {
     if (generation !== serverGeneration) return;
     showError(
       error instanceof TypeError
-        ? "The local lab is unavailable. Check its terminal and reconnect."
-        : error.message,
+        ? "The lab is unavailable. Check that it is running, then try again."
+        : "We couldn’t complete this action. Try again.",
     );
   }
 }
@@ -843,9 +880,16 @@ document.addEventListener("keydown", (event) => {
     $("menu-toggle").focus();
   }
 });
-let theme =
-  localStorage.getItem("eigenscope-lab-theme") ||
-  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+function preferredTheme() {
+  try {
+    const saved = localStorage.getItem("eigenscope-lab-theme");
+    if (saved === "dark" || saved === "light") return saved;
+  } catch {
+    // Browser storage can be disabled; the dashboard still works for this session.
+  }
+  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+let theme = preferredTheme();
 function applyTheme() {
   document.documentElement.dataset.theme = theme;
   $("theme").textContent = theme === "dark" ? "Light mode" : "Dark mode";
@@ -853,7 +897,11 @@ function applyTheme() {
 }
 $("theme").addEventListener("click", () => {
   theme = theme === "dark" ? "light" : "dark";
-  localStorage.setItem("eigenscope-lab-theme", theme);
+  try {
+    localStorage.setItem("eigenscope-lab-theme", theme);
+  } catch {
+    // Keep the user's choice for this page even when it cannot be persisted.
+  }
   applyTheme();
 });
 $("download").addEventListener("click", () => {
@@ -891,6 +939,19 @@ function text(value, x, y, size = 16, fill = color("--muted"), align = "left") {
   ctx.fillStyle = fill;
   ctx.textAlign = align;
   ctx.fillText(value, x, y);
+}
+function wrappedText(value, x, y, maxWidth, size, fill, lineHeight) {
+  ctx.font = `500 ${size}px ui-sans-serif,system-ui,sans-serif`;
+  let current = "";
+  for (const word of String(value).split(" ")) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (current && ctx.measureText(candidate).width > maxWidth) {
+      text(current, x, y, size, fill);
+      y += lineHeight;
+      current = word;
+    } else current = candidate;
+  }
+  if (current) text(current, x, y, size, fill);
 }
 function circle(x, y, radius, fill, stroke) {
   ctx.beginPath();
@@ -1249,7 +1310,7 @@ function drawMultimodal(compact) {
   cards.forEach(([title, mod, sub], idx) => {
     const liveMod = frame.live_modality_status?.[mod];
     const liveFlagged = Boolean(liveMod && liveMod !== "PASSED");
-    const liveAdvisory = liveMod === "TIER_GATED" || liveMod === "AUTH_REQUIRED";
+    const liveAdvisory = liveMod === "UNAVAILABLE" || liveMod === "AUTH_REQUIRED";
     const done = liveMod
       ? liveMod === "PASSED"
       : idx < currentIdx || (idx === currentIdx && frame.exact_roundtrip);
@@ -1275,8 +1336,8 @@ function drawMultimodal(compact) {
       text(title, 48, y + 30, 24, ink);
       text(sub, 48, y + 56, 19, muted);
       text(
-        liveMod === "TIER_GATED"
-          ? "Tier gated"
+        liveMod === "UNAVAILABLE"
+          ? "Unavailable"
           : liveMod === "AUTH_REQUIRED"
             ? "API key"
             : liveFlagged
@@ -1309,12 +1370,12 @@ function drawMultimodal(compact) {
       text(title, x + 24, y + 76, 25, ink);
       text(sub, x + 24, y + 110, 16, muted);
       text(
-        liveMod === "TIER_GATED"
-          ? "Local SHA-256 ✓ · Live tier gated"
+        liveMod === "UNAVAILABLE"
+          ? "Service unavailable · Try again"
           : liveMod === "AUTH_REQUIRED"
-            ? "Local SHA-256 ✓ · Check API key"
+            ? "Check connection credentials"
             : liveFlagged
-              ? "Local SHA-256 ✓ · Review live"
+              ? "Review highlighted checks"
               : liveMod === "PASSED"
                 ? "Live & local SHA-256 verified"
                 : done
@@ -1358,34 +1419,47 @@ function drawRag(compact) {
     ink,
   );
   text(
-    `${words(frame.phase)} · ${frame.ingested_count || 0} passages · SIR threshold θ = ${number(frame.sir_threshold ?? 0.35, 2)}`,
+    `${words(frame.phase)} · ${frame.ingested_count || 0} passages · SIR threshold θ = ${number(frame.sir_threshold, 2)}`,
     28,
     72,
     compact ? 19 : 18,
     muted,
   );
-  const topAdmitted =
-    frame.top_admitted_doc_id || frame.admitted_context?.[0]?.doc_id || "kb_invoice_proration";
+  const topAdmitted = frame.top_admitted_doc_id || frame.admitted_context?.[0]?.doc_id;
+  const rankingCheck = observedCheck("clean_ground_truth_ranked_first_after_disentanglement");
+  const quarantineCheck = observedCheck("sir_gate_quarantines_full_and_partial_poison");
   const stages = [
     [
       "Corpus & SIR Gate",
       `${frame.searchable_count ?? 0} admitted · ${frame.quarantined_count ?? 0} quarantined`,
-      (frame.quarantined_count ?? 0) >= 2 ? "Poison quarantined" : "Scanning corpus…",
-      (frame.quarantined_count ?? 0) >= 2,
+      quarantineCheck
+        ? quarantineCheck.passed === true
+          ? "Poison quarantined"
+          : "Check needs attention"
+        : (frame.quarantined_count ?? 0) > 0
+          ? "Quarantine observed"
+          : "Scanning corpus…",
+      quarantineCheck?.passed === true,
     ],
     [
       "Disentangled Top-k",
-      `Rank #1: ${topAdmitted}`,
-      frame.phase === "corpus-ingest" ? "Pending retrieval" : "Clean ground-truth #1",
-      frame.phase !== "corpus-ingest",
+      topAdmitted ? `Rank #1: ${topAdmitted}` : "Awaiting top passage",
+      rankingCheck
+        ? rankingCheck.passed === true
+          ? "Ground-truth #1"
+          : "Ranking needs attention"
+        : topAdmitted
+          ? "Top passage retrieved"
+          : "Pending retrieval",
+      rankingCheck?.passed === true,
     ],
     [
       "Citation & Receipts",
       frame.rejected_controls !== undefined
         ? `${frame.rejected_controls}/${frame.expected_rejected_controls} controls denied`
         : "Loopback HTTP gate",
-      frame.citation_verified ? "Receipt verified ✓" : "Single-use attestation",
-      Boolean(frame.citation_verified),
+      frame.citation_verified === true ? "Receipt verified ✓" : "Single-use attestation",
+      frame.citation_verified === true,
     ],
   ];
   stages.forEach(([title, sub, statusText, done], idx) => {
@@ -1401,7 +1475,7 @@ function drawRag(compact) {
       ctx.stroke();
       text(title, 46, y + 28, 22, ink);
       text(sub, 46, y + 54, 17, muted);
-      text(statusText, W - 46, y + 40, 18, stroke, "right");
+      text(statusText, W - 46, y + 28, 18, stroke, "right");
     } else {
       const cardW = 300,
         x = 55 + idx * 335,
@@ -1422,28 +1496,29 @@ function drawRag(compact) {
   });
   if (!compact && Array.isArray(frame.benchmark_rows) && frame.benchmark_rows.length) {
     text("6-RETRIEVER BENCHMARK · CLEAN nDCG@5 vs POISON EXPOSURE", 55, 268, 15, ink);
-    const shortNames = {
-      legacy_bm25: "Legacy BM25",
-      legacy_dense_bi_encoder: "Dense bi-encoder",
-      legacy_hybrid_rrf: "Hybrid RRF",
-      lexical_overlap_filter_tau_0_95: "Lexical filter τ=0.95",
-      mmr_diversity_rerank: "MMR rerank",
-      orthocore_subspace_disentangled: "Subspace + SIR gate",
-    };
     frame.benchmark_rows.slice(0, 6).forEach((row, i) => {
       const col = i % 2,
         rIdx = Math.floor(i / 2);
       const bx = 55 + col * 515,
         by = 296 + rIdx * 42;
-      const isClean = Number(row.poison_target_exposure_pct) === 0;
-      text(shortNames[row.retriever] || row.retriever, bx, by, 14, ink);
+      const isClean =
+        Number.isFinite(row.poison_target_exposure_pct) && row.poison_target_exposure_pct === 0;
+      text(
+        RETRIEVER_NAMES[row.retriever] || row.display_name || words(row.retriever),
+        bx,
+        by,
+        14,
+        ink,
+      );
       ctx.fillStyle = color("--grid");
       ctx.fillRect(bx + 150, by - 12, 120, 15);
       ctx.fillStyle = isClean ? accent : danger;
       ctx.fillRect(
         bx + 150,
         by - 12,
-        Math.max(8, Math.min(1, Number(row.clean_ndcg_at_k || 0)) * 120),
+        Number.isFinite(row.clean_ndcg_at_k)
+          ? Math.max(0, Math.min(1, row.clean_ndcg_at_k)) * 120
+          : 0,
         15,
       );
       text(
@@ -1457,12 +1532,20 @@ function drawRag(compact) {
   }
   const footerText =
     frame.orthocore_ndcg !== undefined
-      ? `Subspace + SIR gate: clean nDCG@5 = ${number(frame.orthocore_ndcg, 4)} · ${number(frame.orthocore_poison_exposure_pct, 1)}% poison exposure (baseline ${number(frame.baseline_poison_exposure_pct ?? 100, 0)}%)`
-      : `Ingesting passage ${frame.doc_id || ""} · SIR = ${number(frame.sir_score ?? 0, 4)}`;
-  text(footerText, 28, compact ? 404 : 458, compact ? 19 : 17, accent);
+      ? `Subspace + SIR gate: nDCG@5 ${number(frame.orthocore_ndcg, 4)} · ${number(frame.orthocore_poison_exposure_pct, 1)}% poison exposure${Number.isFinite(frame.baseline_poison_exposure_pct) ? ` (baseline ${number(frame.baseline_poison_exposure_pct, 0)}%)` : ""}`
+      : `Ingesting passage ${frame.doc_id || ""} · SIR = ${number(frame.sir_score, 4)}`;
+  wrappedText(
+    footerText,
+    28,
+    compact ? 382 : 440,
+    W - 56,
+    compact ? 18 : 17,
+    accent,
+    compact ? 26 : 24,
+  );
   canvas.setAttribute(
     "aria-label",
-    `RAG defense ${words(frame.phase)}, ${frame.searchable_count ?? 0} admitted passages, ${frame.quarantined_count ?? 0} quarantined passages, clean nDCG ${number(frame.orthocore_ndcg ?? 1, 4)}.`,
+    `RAG defense ${words(frame.phase)}, ${frame.searchable_count ?? 0} admitted passages, ${frame.quarantined_count ?? 0} quarantined passages, clean nDCG ${number(frame.orthocore_ndcg, 4)}.`,
   );
 }
 function drawCompact() {
@@ -1601,7 +1684,14 @@ function drawCompact() {
     lines
       .slice(0, 2)
       .forEach((value, i) =>
-        text(value, 320, 362 + i * 35, 24, frame.passed ? accent : color("--danger"), "center"),
+        text(
+          value,
+          320,
+          362 + i * 35,
+          24,
+          frame.passed === true ? accent : color("--danger"),
+          "center",
+        ),
       );
     canvas.setAttribute(
       "aria-label",
@@ -1917,7 +2007,7 @@ function drawWorkflow(compact) {
     stages.forEach(([label, names, note], i) => {
       const checks = names.map(observedCheck),
         ready = checks.every(Boolean),
-        passed = ready && checks.every((c) => c.passed);
+        passed = ready && checks.every((c) => c.passed === true);
       const y = 106 + i * 82,
         stroke = ready ? (passed ? accent : color("--danger")) : color("--line");
       if (i) line(52, y - 60, 52, y - 23, color("--line"), 3);
@@ -1930,7 +2020,7 @@ function drawWorkflow(compact) {
     stages.forEach(([label, names, note], i) => {
       const checks = names.map(observedCheck),
         ready = checks.every(Boolean),
-        passed = ready && checks.every((c) => c.passed);
+        passed = ready && checks.every((c) => c.passed === true);
       const x = 40 + i * 260,
         stroke = ready ? (passed ? accent : color("--danger")) : color("--line");
       ctx.fillStyle = color("--surface");
@@ -1950,23 +2040,27 @@ function drawWorkflow(compact) {
       const liveToolCheck = observedCheck("untrusted_directives_absent");
       text(
         liveToolCheck
-          ? liveToolCheck.passed
-            ? "Live sanitize_tool_output filtered embedded instructions"
-            : "Identifiers protected · pair with domain policy for embedded instructions"
+          ? liveToolCheck.passed === true
+            ? "Embedded instructions filtered before model access"
+            : "Embedded instruction filtering needs attention"
           : observedCheck("untrusted_injection_fixture_reaches_boundary")
             ? "Injected text delivered as untrusted data · sanitization is a separate live check"
             : "Tool-result trust is separate from permission to call a tool",
         40,
         290,
         18,
-        liveToolCheck ? (liveToolCheck.passed ? accent : color("--warning")) : color("--warning"),
+        liveToolCheck
+          ? liveToolCheck.passed === true
+            ? accent
+            : color("--warning")
+          : color("--warning"),
       );
     } else
       text("The observed code change appears below after the patch is tested.", 40, 290, 18, muted);
   }
   canvas.setAttribute(
     "aria-label",
-    `${definitions[selected].title}: ${stages.map(([label, names]) => label + ": " + (names.every((name) => observedCheck(name)?.passed) ? "observed" : "awaiting or needs attention")).join("; ")}.`,
+    `${definitions[selected].title}: ${stages.map(([label, names]) => label + ": " + (names.every((name) => observedCheck(name)?.passed === true) ? "observed" : "awaiting or needs attention")).join("; ")}.`,
   );
 }
 function drawContract() {
@@ -1989,12 +2083,12 @@ function drawContract() {
     540,
     414,
     16,
-    frame.passed ? color("--accent") : color("--danger"),
+    frame.passed === true ? color("--accent") : color("--danger"),
     "center",
   );
   canvas.setAttribute(
     "aria-label",
-    `${definitions[selected].title}, ${frame.completed_checks || 0} checks observed. Latest: ${words(frame.phase)}, ${frame.passed ? "passed" : "failed"}.`,
+    `${definitions[selected].title}, ${frame.completed_checks || 0} checks observed. Latest: ${words(frame.phase)}, ${frame.passed === true ? "passed" : "failed"}.`,
   );
 }
 const events = new EventSource("/api/events");

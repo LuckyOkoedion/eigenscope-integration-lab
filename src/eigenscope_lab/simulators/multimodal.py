@@ -13,6 +13,7 @@ import io
 import math
 import secrets
 import struct
+import threading
 import time
 import wave
 import zlib
@@ -50,11 +51,14 @@ def encode_wav_pcm16(samples_i16: Any, *, sample_rate_hz: int = 16_000, channels
     np, _, _ = _engine()
     if type(sample_rate_hz) is not int or not 16_000 <= sample_rate_hz <= 48_000:
         raise MediaContractRejected("WAV sample_rate_hz must be in [16000, 48000]")
-    if channels not in {1, 2}:
+    if type(channels) is not int or channels not in {1, 2}:
         raise MediaContractRejected("WAV channels must be 1 or 2")
-    arr = np.asarray(samples_i16, dtype="<i2")
-    if arr.size == 0:
-        raise MediaContractRejected("WAV sample buffer must be nonempty")
+    source = np.asarray(samples_i16)
+    if source.size == 0 or source.dtype.kind not in "iu" or source.size % channels:
+        raise MediaContractRejected("WAV requires complete integer PCM16 frames")
+    if np.any(source < -32768) or np.any(source > 32767):
+        raise MediaContractRejected("WAV sample is outside the PCM16 range")
+    arr = np.asarray(source, dtype="<i2")
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wav_file:
         wav_file.setnchannels(channels)
@@ -76,7 +80,7 @@ def decode_wav_pcm16(raw: bytes) -> tuple[Any, int, int]:
             nframes = wav_file.getnframes()
             comptype = wav_file.getcomptype()
             pcm = wav_file.readframes(nframes)
-    except wave.Error as exc:
+    except (wave.Error, EOFError, struct.error) as exc:
         raise MediaContractRejected("Corrupted WAVE header or frame payload") from exc
     if comptype != "NONE" or sampwidth != 2 or channels not in {1, 2} or nframes <= 0:
         raise MediaContractRejected("Unsupported WAVE encoding; 16-bit linear PCM required")
@@ -122,9 +126,17 @@ def decode_png_rgba(raw: bytes) -> Any:
     width = height = 0
     idat_parts: list[bytes] = []
     seen_iend = False
+    seen_plte = False
+    idat_closed = False
     while pos + 12 <= len(raw):
         length = struct.unpack(">I", raw[pos : pos + 4])[0]
         chunk_type = bytes(raw[pos + 4 : pos + 8])
+        if (
+            len(chunk_type) != 4
+            or not all(65 <= value <= 90 or 97 <= value <= 122 for value in chunk_type)
+            or not 65 <= chunk_type[2] <= 90
+        ):
+            raise MediaContractRejected("Invalid PNG chunk type")
         end_data = pos + 8 + length
         if end_data + 4 > len(raw):
             raise MediaContractRejected("Truncated PNG chunk")
@@ -134,9 +146,13 @@ def decode_png_rgba(raw: bytes) -> Any:
         if actual_crc != expected_crc:
             raise MediaContractRejected("PNG chunk CRC-32 mismatch")
         pos = end_data + 4
+        if width == 0 and chunk_type != b"IHDR":
+            raise MediaContractRejected("PNG IHDR must be the first chunk")
+        if idat_parts and chunk_type != b"IDAT":
+            idat_closed = True
         if chunk_type == b"IHDR":
-            if length != 13:
-                raise MediaContractRejected("Invalid PNG IHDR length")
+            if width != 0 or length != 13:
+                raise MediaContractRejected("PNG requires one 13-byte IHDR chunk")
             width, height, bit_depth, color_type, comp, filt, interlace = struct.unpack(
                 ">IIBBBBB", chunk_data
             )
@@ -150,23 +166,66 @@ def decode_png_rgba(raw: bytes) -> Any:
             ):
                 raise MediaContractRejected("PNG header outside 8-bit non-interlaced RGBA contract")
         elif chunk_type == b"IDAT":
+            if idat_closed:
+                raise MediaContractRejected("PNG IDAT chunks must be consecutive")
             idat_parts.append(chunk_data)
+        elif chunk_type == b"PLTE":
+            if seen_plte or idat_parts or not 3 <= length <= 768 or length % 3:
+                raise MediaContractRejected("Invalid PNG palette structure")
+            seen_plte = True
         elif chunk_type == b"IEND":
+            if length != 0:
+                raise MediaContractRejected("PNG IEND must be empty")
             seen_iend = True
             break
+        elif 65 <= chunk_type[0] <= 90:
+            raise MediaContractRejected("Unsupported critical PNG chunk")
     if not seen_iend or pos != len(raw) or width == 0 or not idat_parts:
         raise MediaContractRejected("Incomplete PNG stream")
+    stride = width * 4 + 1
+    expected_bytes = height * stride
     try:
-        decompressed = zlib.decompress(b"".join(idat_parts))
+        inflater = zlib.decompressobj()
+        decompressed = inflater.decompress(b"".join(idat_parts), expected_bytes + 1)
     except zlib.error as exc:
         raise MediaContractRejected("Corrupted PNG zlib payload") from exc
-    stride = width * 4 + 1
-    if len(decompressed) != height * stride:
+    if (
+        len(decompressed) != expected_bytes
+        or not inflater.eof
+        or inflater.unconsumed_tail
+        or inflater.unused_data
+    ):
         raise MediaContractRejected("PNG uncompressed byte count mismatch")
     rows = np.frombuffer(decompressed, dtype=np.uint8).reshape(height, stride)
-    if np.any(rows[:, 0] != 0):
-        raise MediaContractRejected("Only filter-0 RGBA scanlines are admitted in local codec")
-    return rows[:, 1:].reshape(height, width, 4).copy()
+    reconstructed = np.empty((height, width * 4), dtype=np.uint8)
+    for row_index, row in enumerate(rows):
+        filter_type = int(row[0])
+        source = row[1:]
+        above = reconstructed[row_index - 1] if row_index else np.zeros(width * 4, dtype=np.uint8)
+        if filter_type == 0:
+            reconstructed[row_index] = source
+        elif filter_type == 1:
+            # Sub has four independent channel prefix sums modulo 256.
+            reconstructed[row_index] = np.cumsum(source.reshape(width, 4), axis=0).reshape(-1)
+        elif filter_type == 2:
+            reconstructed[row_index] = source.astype(np.uint16) + above
+        elif filter_type in (3, 4):
+            output = bytearray(width * 4)
+            for index, value in enumerate(source):
+                left = output[index - 4] if index >= 4 else 0
+                up = int(above[index])
+                upper_left = int(above[index - 4]) if index >= 4 else 0
+                if filter_type == 3:
+                    prediction = (left + up) // 2
+                else:
+                    base = left + up - upper_left
+                    distances = (abs(base - left), abs(base - up), abs(base - upper_left))
+                    prediction = (left, up, upper_left)[distances.index(min(distances))]
+                output[index] = (int(value) + prediction) & 255
+            reconstructed[row_index] = np.frombuffer(output, dtype=np.uint8)
+        else:
+            raise MediaContractRejected("Invalid PNG scanline filter")
+    return reconstructed.reshape(height, width, 4)
 
 
 def encode_ocvc_rgba(frames: Any) -> bytes:
@@ -234,23 +293,31 @@ class LocalMediaVaultFixture:
 
     def __init__(self) -> None:
         self._entries: dict[str, tuple[str, str, bytes]] = {}
+        self._lock = threading.Lock()
 
     def stage(self, modality: str, projected_bytes: bytes, original_bytes: bytes) -> str:
         ticket = "vlt_local_" + secrets.token_urlsafe(18)
-        self._entries[ticket] = (modality, sha256_prefixed(projected_bytes), bytes(original_bytes))
+        with self._lock:
+            self._entries[ticket] = (
+                modality,
+                sha256_prefixed(projected_bytes),
+                bytes(original_bytes),
+            )
         return ticket
 
     def restore_once(self, ticket: str, modality: str, projected_bytes: bytes) -> bytes:
-        if not isinstance(ticket, str) or ticket not in self._entries:
-            raise MediaContractRejected("Unknown or already consumed local media handle")
-        expected_mod, expected_sha, original = self._entries[ticket]
-        if expected_mod != modality or sha256_prefixed(projected_bytes) != expected_sha:
-            raise MediaContractRejected("Projected media digest or modality mismatch")
-        del self._entries[ticket]
-        return original
+        with self._lock:
+            if not isinstance(ticket, str) or ticket not in self._entries:
+                raise MediaContractRejected("Unknown or already consumed local media handle")
+            expected_mod, expected_sha, original = self._entries[ticket]
+            if expected_mod != modality or sha256_prefixed(projected_bytes) != expected_sha:
+                raise MediaContractRejected("Projected media digest or modality mismatch")
+            del self._entries[ticket]
+            return original
 
     def close(self) -> None:
-        self._entries.clear()
+        with self._lock:
+            self._entries.clear()
 
 
 def build_synthetic_media_bundle(seed: int = 7) -> dict[str, Any]:

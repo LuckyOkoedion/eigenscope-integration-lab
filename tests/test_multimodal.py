@@ -105,7 +105,10 @@ class _FakeResponse:
 
 def test_multimodal_live_contract_pass_replay_and_secret_safe_failure():
     bundle = build_synthetic_media_bundle(seed=7)
-    masked_png = bundle["png_bytes"][:-1] + bytes([bundle["png_bytes"][-1] ^ 1])
+    pixels = decode_png_rgba(bundle["png_bytes"])
+    box = bundle["image_box"]
+    pixels[box.y : box.y + box.height, box.x : box.x + box.width] = (0, 0, 0, 255)
+    masked_png = encode_png_rgba(pixels)
     consumed = {"done": False}
     zeroized = []
 

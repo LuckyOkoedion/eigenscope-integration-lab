@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
 import stat
@@ -196,3 +197,39 @@ def test_temporary_application_material_is_removed_after_contract_exception(monk
     with pytest.raises(RuntimeError, match="Synthetic test interruption"):
         run_opcua_contract()
     assert captured and all(not Path(path).exists() for path in captured)
+
+
+def test_namespace_cache_is_scoped_to_installed_engine_version(monkeypatch, tmp_path):
+    monkeypatch.setattr(oil_gas_opcua.sys, "prefix", str(tmp_path))
+    shelf = oil_gas_opcua._standard_address_space_shelf()
+    assert shelf == (
+        tmp_path
+        / "share"
+        / "eigenscope-lab"
+        / f"asyncua-{oil_gas_opcua.asyncua.__version__}"
+        / "standard-address-space"
+    )
+
+
+@pytest.mark.industry
+def test_readonly_standard_namespace_cache_preserves_actual_wire_contract(monkeypatch, tmp_path):
+    shelf = tmp_path / "namespace"
+    asyncio.run(oil_gas_opcua.Server().init(shelf))
+    files = list(tmp_path.iterdir())
+    assert files
+    original = {path.name: path.read_bytes() for path in files}
+    monkeypatch.setattr(oil_gas_opcua, "_standard_address_space_shelf", lambda: shelf)
+    for path in files:
+        path.chmod(0o444)
+    try:
+        result = run_opcua_contract()
+        assert result["metrics"]["standard_namespace_cached"] is True
+        assert result["metrics"]["standard_namespace_init_ms"] >= 0
+        assert all(check["passed"] is True for check in result["checks"])
+        assert result["metrics"]["owned_tasks_remaining"] == 0
+        assert result["metrics"]["temporary_key_material_removed"] is True
+        assert {path.name: path.read_bytes() for path in files} == original
+        assert {path.name for path in tmp_path.iterdir()} == set(original)
+    finally:
+        for path in files:
+            path.chmod(0o600)

@@ -1,6 +1,7 @@
 /** Reference HTTP client for public /v1 multimodal decomposition and rehydration. */
 import { createHash, randomBytes } from "node:crypto";
-import { deflateSync } from "node:zlib";
+import { deflateSync, inflateSync } from "node:zlib";
+import { decodeOcvcClip, parsePngDimensions, parseWavHeader } from "@eigenscope/sdk";
 import { validateOrigin } from "./owned-client.ts";
 
 export type MediaModality = "audio_wav" | "image_frame" | "video_clip";
@@ -65,6 +66,98 @@ function pngChunk(typeAscii: string, data: Uint8Array): Buffer {
   const crcBuf = Buffer.alloc(4);
   crcBuf.writeUInt32BE(crc32(crcInput), 0);
   return Buffer.concat([lenBuf, crcInput, crcBuf]);
+}
+
+export function decodePngRgba(bytes: Buffer): { width: number; height: number; rgba: Buffer } {
+  const { width, height } = parsePngDimensions(bytes);
+  if (width * height > 4096 * 4096 || bytes.length > 64 * 1024 * 1024) throw new Error();
+  const parts: Buffer[] = [];
+  let ended = false,
+    idatClosed = false,
+    seenPalette = false;
+  for (let offset = 8; offset < bytes.length;) {
+    if (offset + 12 > bytes.length) throw new Error();
+    const length = bytes.readUInt32BE(offset);
+    const end = offset + 12 + length;
+    if (end > bytes.length) throw new Error();
+    const type = bytes.toString("latin1", offset + 4, offset + 8);
+    if (!/^[A-Za-z]{2}[A-Z][A-Za-z]$/.test(type)) throw new Error();
+    const data = bytes.subarray(offset + 8, end - 4);
+    if (crc32(bytes.subarray(offset + 4, end - 4)) !== bytes.readUInt32BE(end - 4))
+      throw new Error();
+    if (offset === 8 && type !== "IHDR") throw new Error();
+    if (parts.length && type !== "IDAT") idatClosed = true;
+    if (type === "IHDR") {
+      if (
+        offset !== 8 ||
+        length !== 13 ||
+        data[8] !== 8 ||
+        data[9] !== 6 ||
+        data[10] !== 0 ||
+        data[11] !== 0 ||
+        data[12] !== 0
+      )
+        throw new Error();
+    } else if (type === "IDAT") {
+      if (idatClosed) throw new Error();
+      parts.push(data);
+    } else if (type === "PLTE") {
+      if (seenPalette || parts.length || length < 3 || length > 768 || length % 3)
+        throw new Error();
+      seenPalette = true;
+    } else if (type === "IEND") {
+      if (length !== 0 || end !== bytes.length || !parts.length) throw new Error();
+      ended = true;
+      break;
+    } else if (type.charCodeAt(0) < 97) throw new Error();
+    offset = end;
+  }
+  if (!ended) throw new Error();
+  const rowBytes = width * 4,
+    stride = rowBytes + 1,
+    expected = height * stride;
+  const compressed = Buffer.concat(parts);
+  const inflated = inflateSync(compressed, {
+    maxOutputLength: expected + 1,
+    info: true,
+  }) as unknown as {
+    buffer: Buffer;
+    engine: { bytesWritten: number };
+  };
+  const filtered = inflated.buffer;
+  const rgba = Buffer.alloc(width * height * 4);
+  try {
+    if (filtered.length !== expected || inflated.engine.bytesWritten !== compressed.length)
+      throw new Error();
+    for (let y = 0; y < height; y++) {
+      const filter = filtered[y * stride]!;
+      if (filter > 4) throw new Error();
+      for (let x = 0; x < rowBytes; x++) {
+        const pos = y * rowBytes + x;
+        const left = x >= 4 ? rgba[pos - 4]! : 0;
+        const up = y ? rgba[pos - rowBytes]! : 0;
+        const upperLeft = y && x >= 4 ? rgba[pos - rowBytes - 4]! : 0;
+        let prediction = 0;
+        if (filter === 1) prediction = left;
+        else if (filter === 2) prediction = up;
+        else if (filter === 3) prediction = Math.floor((left + up) / 2);
+        else if (filter === 4) {
+          const p = left + up - upperLeft;
+          const a = Math.abs(p - left),
+            b = Math.abs(p - up),
+            c = Math.abs(p - upperLeft);
+          prediction = a <= b && a <= c ? left : b <= c ? up : upperLeft;
+        }
+        rgba[pos] = (filtered[y * stride + x + 1]! + prediction) & 255;
+      }
+    }
+    return { width, height, rgba };
+  } catch (error) {
+    rgba.fill(0);
+    throw error;
+  } finally {
+    filtered.fill(0);
+  }
 }
 
 export function buildSyntheticWav16k(durationSamples = 8000): Buffer {
@@ -262,6 +355,41 @@ export function createMultimodalHttpClient(options: {
       }
       const projectedBase64 = extractProjectedBase64(data);
       const projectedBytes = Buffer.from(projectedBase64, "base64");
+      try {
+        if (modality === "audio_wav") {
+          const wav = parseWavHeader(projectedBytes);
+          if (
+            wav.audio_format !== 1 ||
+            wav.bits_per_sample !== 16 ||
+            wav.sample_rate_hz !== inputPayload.sample_rate_hz ||
+            wav.channels !== (inputPayload.channels ?? 1) ||
+            wav.data_bytes < 1
+          )
+            throw new Error();
+        } else if (modality === "image_frame") {
+          const png = decodePngRgba(projectedBytes);
+          try {
+            if (png.width !== inputPayload.width || png.height !== inputPayload.height)
+              throw new Error();
+          } finally {
+            png.rgba.fill(0);
+          }
+        } else {
+          const clip = decodeOcvcClip(projectedBytes);
+          try {
+            if (
+              clip.width !== inputPayload.width ||
+              clip.height !== inputPayload.height ||
+              clip.frame_count !== inputPayload.frame_count
+            )
+              throw new Error();
+          } finally {
+            clip.zeroize();
+          }
+        }
+      } catch {
+        throw new MultimodalContractError("Projected media format or dimensions are invalid");
+      }
       const taskCore = typeof data.task_core === "string" ? data.task_core : "[TASK_CORE]";
       return { vaultTicket, projectedBytes, projectedBase64, taskCore };
     },

@@ -479,6 +479,7 @@ all = [
     { name = "cryptography" },
     { name = "eigenscope-sdk" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "mcp" },
     { name = "mujoco", version = "3.3.7", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
     { name = "mujoco", version = "3.17.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
@@ -491,6 +492,7 @@ all = [
 ]
 healthcare = [
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -553,10 +555,11 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'oil-gas'", specifier = ">=50,<51" },
     { name = "cryptography", marker = "extra == 'tools'", specifier = ">=50,<51" },
     { name = "eigenscope-integration-lab", extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas", "healthcare", "multimodal", "rag"], marker = "extra == 'all'" },
-    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.7-py3-none-any.whl" },
+    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.7-96b307ab/eigenscope_sdk-0.2.7-py3-none-any.whl" },
     { name = "httpx", marker = "extra == 'healthcare'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'provider'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'rag'", specifier = ">=0.28,<1" },
+    { name = "jsonschema", marker = "extra == 'healthcare'", specifier = ">=4.25,<5" },
     { name = "mcp", marker = "extra == 'tools'", specifier = ">=1.30,<2" },
     { name = "mujoco", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin' and extra == 'robotics'", specifier = ">=3.3,<3.4" },
     { name = "mujoco", marker = "(platform_machine != 'x86_64' and extra == 'robotics') or (sys_platform != 'darwin' and extra == 'robotics')", specifier = ">=3.3,<4" },
@@ -585,9 +588,9 @@ dev = [
 [[package]]
 name = "eigenscope-sdk"
 version = "0.2.7"
-source = { url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.7-py3-none-any.whl" }
+source = { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.7-96b307ab/eigenscope_sdk-0.2.7-py3-none-any.whl" }
 wheels = [
-    { url = "https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.7-py3-none-any.whl", hash = "sha256:37036c2959b9f7e052d07b02f8e892f258017ba6572e3af5a4a847ea70ad0258" },
+    { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.7-96b307ab/eigenscope_sdk-0.2.7-py3-none-any.whl", hash = "sha256:96b307ab2b3b0640ba5bf866a84cb044cea84266cf10015d6a5cb244179f8ec1" },
 ]
 
 [package.metadata]

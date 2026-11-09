@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from eigenscope_lab.live import ServiceResponseContractError
-from eigenscope_lab.rag_live import _verify_sealed_envelope, run_rag_live_http
+from eigenscope_lab.rag_live import _validate_receipt_envelope, run_rag_live_http
 from eigenscope_lab.reporting import outcome
 from eigenscope_lab.simulators.rag import (
     DEFAULT_SIR_THRESHOLD,
@@ -48,8 +48,8 @@ def test_sir_gate_quarantines_full_and_partial_poison_and_ranks_ground_truth_fir
     admitted_ids = [r["doc_id"] for r in result["admitted_context"]]
     quarantined_ids = {r["doc_id"] for r in result["quarantined_candidates"]}
 
-    assert quarantined_ids == {"kb_poison_proration_override", "kb_poison_refund_escalation"}
-    assert admitted_ids[0] == "kb_invoice_proration"
+    assert quarantined_ids == {"doc_47ac", "doc_b953"}
+    assert admitted_ids[0] == "doc_6d0f"
     assert not (quarantined_ids & set(admitted_ids))
     assert any(r["poison"] is not None for r in result["entangled_top_k"])
 
@@ -77,11 +77,11 @@ def test_six_retriever_benchmark_separates_orthocore_from_entangled_and_lexical_
 
 def test_single_use_retrieval_receipts_bind_tenant_and_admitted_passages():
     receipts = LocalRetrievalReceipts()
-    rcpt = receipts.issue("tenant-acme", ["kb_invoice_proration", "kb_billing_api"])
-    assert receipts.consume(rcpt, "tenant-other", ["kb_invoice_proration"]) is False
-    rcpt2 = receipts.issue("tenant-acme", ["kb_invoice_proration", "kb_billing_api"])
-    assert receipts.consume(rcpt2, "tenant-acme", ["kb_invoice_proration"]) is True
-    assert receipts.consume(rcpt2, "tenant-acme", ["kb_invoice_proration"]) is False
+    rcpt = receipts.issue("tenant-acme", ["doc_6d0f", "doc_c281"])
+    assert receipts.consume(rcpt, "tenant-other", ["doc_6d0f"]) is False
+    rcpt2 = receipts.issue("tenant-acme", ["doc_6d0f", "doc_c281"])
+    assert receipts.consume(rcpt2, "tenant-acme", ["doc_6d0f"]) is True
+    assert receipts.consume(rcpt2, "tenant-acme", ["doc_6d0f"]) is False
 
 
 @pytest.mark.parametrize(
@@ -122,7 +122,7 @@ def test_full_rag_scenario_emits_frames_and_passes_all_checks(rag_index):
     )
 
 
-def test_live_rag_http_verifies_sealed_envelope_and_flags_unquarantined_poison(monkeypatch):
+def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
     httpx = pytest.importorskip("httpx")
 
     def make_sealed(body):
@@ -136,6 +136,7 @@ def test_live_rag_http_verifies_sealed_envelope_and_flags_unquarantined_poison(m
             "attestation": {
                 "receipt_sha256": "sha256:" + "a" * 64,
                 "signature": "ed25519:" + "b" * 128,
+                "single_use_enforced": True,
             },
         }
 
@@ -175,10 +176,26 @@ def test_live_rag_http_verifies_sealed_envelope_and_flags_unquarantined_poison(m
                     200,
                     make_sealed(
                         {
-                            "admitted_context": [{"doc_id": "kb_invoice_proration"}],
+                            "candidate_pool_n": len(SEED_PASSAGES),
+                            "sir_threshold": DEFAULT_SIR_THRESHOLD,
+                            "admitted_context": [
+                                {
+                                    "doc_id": "doc_6d0f",
+                                    "task_subspace_score": 0.9,
+                                    "sir_score": 0.1,
+                                }
+                            ],
                             "quarantined_candidates": [
-                                {"doc_id": "kb_poison_proration_override"},
-                                {"doc_id": "kb_poison_refund_escalation"},
+                                {
+                                    "doc_id": "doc_47ac",
+                                    "sir_score": 0.8,
+                                    "reason": "sir_threshold_exceeded",
+                                },
+                                {
+                                    "doc_id": "doc_b953",
+                                    "sir_score": 0.7,
+                                    "reason": "sir_threshold_exceeded",
+                                },
                             ],
                         }
                     ),
@@ -188,13 +205,25 @@ def test_live_rag_http_verifies_sealed_envelope_and_flags_unquarantined_poison(m
                 200,
                 make_sealed(
                     {
+                        "documents": len(SEED_PASSAGES),
+                        "queries": len(SEED_QUERIES),
                         "rows": [
                             {
-                                "retriever": "orthocore_subspace_disentangled",
+                                "retriever": name,
                                 "poison_target_exposure_pct": 0.0,
+                                "full_query_exposure_pct": 0.0,
+                                "partial_query_exposure_pct": 0.0,
                                 "clean_ndcg_at_k": 1.0,
                             }
-                        ]
+                            for name in (
+                                "legacy_bm25",
+                                "legacy_dense_bi_encoder",
+                                "legacy_hybrid_rrf",
+                                "lexical_overlap_filter_tau_0_95",
+                                "mmr_diversity_rerank",
+                                "orthocore_subspace_disentangled",
+                            )
+                        ],
                     }
                 ),
             )
@@ -203,4 +232,4 @@ def test_live_rag_http_verifies_sealed_envelope_and_flags_unquarantined_poison(m
     row = run_rag_live_http(base_url="https://sdk.example.invalid", key="synthetic-key")
     assert outcome(row) == "PASS", row
     with pytest.raises(ServiceResponseContractError):
-        _verify_sealed_envelope({"schema_version": 1, "body": {}, "attestation": {}})
+        _validate_receipt_envelope({"schema_version": 1, "body": {}, "attestation": {}})

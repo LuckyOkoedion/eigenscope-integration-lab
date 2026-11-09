@@ -15,6 +15,7 @@ import os
 import secrets
 import socket
 import stat
+import sys
 import tempfile
 import time
 from collections.abc import Awaitable
@@ -37,6 +38,16 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 _SERVER_URI = "urn:eigenscope:integration-lab:oil-gas:server"
 _CLIENT_URI = "urn:eigenscope:integration-lab:oil-gas:client"
+
+
+def _standard_address_space_shelf() -> Path:
+    return (
+        Path(sys.prefix)
+        / "share"
+        / "eigenscope-lab"
+        / f"asyncua-{asyncua.__version__}"
+        / "standard-address-space"
+    )
 
 
 @dataclass(frozen=True)
@@ -276,7 +287,11 @@ async def _run_contract(material: _CertificateMaterial) -> dict[str, Any]:
     baseline_tasks = set(asyncio.all_tasks())
     password = secrets.token_urlsafe(20)
     server = Server(user_manager=OilGasUserManager(password, material.client_sha256))
-    await server.init()
+    shelf = _standard_address_space_shelf()
+    cached_namespace = shelf.is_file() or shelf.with_suffix(".db").is_file()
+    namespace_started = time.perf_counter()
+    await server.init(shelf if cached_namespace else None)
+    namespace_init_ms = round((time.perf_counter() - namespace_started) * 1000, 3)
     server.allow_remote_admin(False)
     await server.set_application_uri(_SERVER_URI)
     await server.load_certificate(material.server_cert)
@@ -308,6 +323,8 @@ async def _run_contract(material: _CertificateMaterial) -> dict[str, Any]:
     metrics: dict[str, Any] = {
         "engine": "asyncua OPC UA binary client/server",
         "engine_version": asyncua.__version__,
+        "standard_namespace_cached": cached_namespace,
+        "standard_namespace_init_ms": namespace_init_ms,
         "security_policy": "Basic256Sha256 / SignAndEncrypt",
         "transport_encryption_tested": True,
         "certificate_trust": "ephemeral explicitly pinned application certificates",
