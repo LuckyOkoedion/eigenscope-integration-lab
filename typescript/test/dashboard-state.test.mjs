@@ -465,3 +465,60 @@ for (const [status, expected] of [
     assert.doesNotMatch(app.get("check-empty").textContent, /^Run this scenario/);
   });
 }
+
+test("Legal is selectable and shows observed terms without replacing them with defaults", () => {
+  const app = dashboard();
+  app.read('selectScenario("legal")');
+  assert.equal(app.get("title").textContent, "Legal & deal rooms");
+  assert.equal(app.get("start").textContent, "Run legal & deal rooms");
+  app.emit("snapshot", 1, {
+    ...snapshot("failed", 1, 1),
+    scenario: "legal",
+    frame: {
+      phase: "commercial_terms_preserved",
+      source_terms: {
+        indemnification_cap_pct: 12.5,
+        survival_months: 24,
+        governing_law: "New York",
+      },
+      observed_terms: {
+        indemnification_cap_pct: 90,
+        survival_months: null,
+        governing_law: "Ontario",
+      },
+      term_matches: {
+        indemnification_cap_pct: false,
+        survival_months: false,
+        governing_law: false,
+      },
+      admitted: false,
+      observed_checks: [{ name: "commercial_terms_preserved", passed: false }],
+    },
+  });
+  const rows = app.get("legal-rows").children;
+  assert.equal(app.get("scene").hidden, true);
+  assert.equal(app.get("legal-table").hidden, false);
+  assert.equal(rows[0].role, "row");
+  assert.equal(rows[0].children[0].role, "rowheader");
+  assert.equal(
+    rows[0].children[1].headers,
+    "legal-term-indemnification_cap_pct legal-source-heading",
+  );
+  assert.equal(
+    rows[0].children[2].headers,
+    "legal-term-indemnification_cap_pct legal-observed-heading",
+  );
+  assert.equal(rows[0].children[1].children[0].textContent, "Source");
+  assert.equal(rows[0].children[2].children[0].textContent, "Observed");
+  assert.equal(rows[0].children[1].children[0]["aria-hidden"], "true");
+  assert.equal(rows[0].children[1].children[1].textContent, "12.5%");
+  assert.equal(rows[0].children[2].children[1].textContent, "90%");
+  assert.equal(rows[0].children[2].children[2].textContent, "Needs review");
+  assert.equal(rows[1].children[2].children[1].textContent, "Missing or conflicting");
+  assert.equal(rows[2].children[2].children[1].textContent, "Ontario");
+  assert.equal(app.get("metrics").children[0].children[1].textContent, "0 / 3");
+  assert.equal(app.get("run-status").textContent, "Needs attention");
+  app.read('selectScenario("robotics")');
+  assert.equal(app.get("legal-comparison").hidden, true);
+  assert.equal(app.get("scene").hidden, false);
+});

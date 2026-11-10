@@ -445,3 +445,52 @@ for (const modality of ["audio_wav", "image_frame", "video_clip"]) {
     });
   }
 }
+
+test("projected video accepts SDK compressed v2 and rejects compressed bytes mislabeled v1", async () => {
+  const { encodeOcvcV2Clip } = await import("@eigenscope/sdk");
+  const compressed = Buffer.from(encodeOcvcV2Clip(new Uint8Array(2 * 8 * 6 * 4).fill(92), 8, 6, 2));
+  assert.equal(compressed[4], 2);
+  assert.ok(compressed.length < 16 + 2 * 8 * 6 * 4);
+  const malformed = Buffer.from(compressed);
+  malformed[4] = 1;
+  let issued = 0;
+  const server = createServer(async (request, response) => {
+    for await (const _ of request) {
+    }
+    response.setHeader("Content-Type", "application/json");
+    response.end(
+      JSON.stringify(
+        request.url === "/api/workbench/vault-zeroize"
+          ? { vault_ticket_scrubbed: true }
+          : {
+              vault_ticket: `vlt_loopback_video_${++issued}`,
+              projected_media_base64: (issued === 1 ? compressed : malformed).toString("base64"),
+            },
+      ),
+    );
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const client = createMultimodalHttpClient({
+    baseUrl: `http://127.0.0.1:${server.address().port}`,
+    bearerToken: "synthetic-loopback-token",
+  });
+  try {
+    const decoded = await client.decomposeMedia("video_clip", {
+      width: 8,
+      height: 6,
+      frame_count: 2,
+    });
+    assert.deepEqual(decoded.projectedBytes, compressed);
+    assert.deepEqual(await client.cleanupOwned(), [{ name: "owned_media_cleanup", passed: true }]);
+    await assert.rejects(
+      () => client.decomposeMedia("video_clip", { width: 8, height: 6, frame_count: 2 }),
+      MultimodalContractError,
+    );
+    assert.deepEqual(await client.cleanupOwned(), [{ name: "owned_media_cleanup", passed: true }]);
+    assert.equal(client.ownedTickets.size, 0);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});

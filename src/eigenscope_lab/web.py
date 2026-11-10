@@ -25,6 +25,7 @@ SCENARIOS = (
     "healthcare",
     "multimodal",
     "rag",
+    "legal",
     "provider",
     "tools",
     "coding",

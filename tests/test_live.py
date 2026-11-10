@@ -621,7 +621,39 @@ def test_validate_live_credentials_and_web_runners_registry():
         "healthcare",
         "multimodal",
         "rag",
+        "legal",
         "provider",
         "tools",
         "coding",
     }
+
+
+def test_legal_workflow_uses_its_actual_domain_policy_and_term_comparison():
+    sdk = pytest.importorskip("eigenscope_sdk")
+    case = ContractCase(
+        "legal",
+        "legal",
+        "Summarize the agreement terms.",
+        (),
+        ("10%", "indemnification", "18", "survival", "Delaware"),
+    )
+
+    class LegalClient(FixtureClient):
+        def decompose(self, _prompt, *, policy):
+            assert policy is sdk.DOMAIN_SEPARATION_POLICIES["LEGAL_CONTRACT_MA_ANALYTICS"]
+            return self._decompose("legal_policy")
+
+    client = LegalClient(
+        core="Summarize the 10% indemnification cap, 18-month survival window, and Delaware governing law."
+    )
+    result = execute(client, case=case)
+    assert outcome(result) == "PASS"
+    assert client.methods == ["legal_policy"]
+    assert result["external_system"]["observed_terms"]["indemnification_cap_pct"] == 10
+
+    changed = LegalClient(
+        core="Summarize the [AMOUNT_1] indemnification cap, 18-month survival window, and Delaware governing law."
+    )
+    result = execute(changed, case=case)
+    assert outcome(result) == "FAIL"
+    assert result["external_system"]["observed_terms"]["indemnification_cap_pct"] is None

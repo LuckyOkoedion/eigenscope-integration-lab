@@ -916,3 +916,137 @@ canvas.compact {
 canvas.workflow {
   aspect-ratio: 1080 / 340;
 }
+
+.legal-comparison {
+  padding: 22px;
+}
+.legal-comparison h3 {
+  margin: 0 0 18px;
+  font-size: 18px;
+}
+.legal-comparison p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.legal-comparison table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+.legal-comparison th,
+.legal-comparison td {
+  padding: 20px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.legal-comparison th:first-child {
+  width: 32%;
+  padding-left: 0;
+}
+.legal-comparison th:nth-child(2) {
+  width: 28%;
+}
+.legal-comparison thead th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
+  padding-top: 0;
+  padding-bottom: 12px;
+}
+.legal-comparison tbody th {
+  font-weight: 500;
+}
+.legal-comparison td strong {
+  display: block;
+  font-weight: 650;
+}
+.legal-comparison td small {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+}
+.term-match {
+  color: var(--accent);
+}
+.term-mismatch {
+  color: var(--danger);
+}
+@media (max-width: 550px) {
+  .legal-comparison {
+    padding: 16px;
+  }
+  .legal-comparison table {
+    font-size: 14px;
+  }
+  .legal-comparison th,
+  .legal-comparison td {
+    padding: 16px 6px;
+    line-height: 1.5;
+  }
+  .legal-comparison td small {
+    font-size: 12px;
+  }
+}
+
+.legal-cell-label {
+  display: none;
+}
+@media (max-width: 420px) {
+  .legal-comparison table,
+  .legal-comparison tbody {
+    display: block;
+  }
+  .legal-comparison thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .legal-comparison tbody {
+    display: grid;
+    gap: 14px;
+  }
+  .legal-comparison tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface-soft);
+  }
+  .legal-comparison tbody th,
+  .legal-comparison tbody td {
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
+  .legal-comparison tbody th:first-child {
+    grid-column: 1 / -1;
+    width: auto;
+    font-size: 15px;
+    font-weight: 650;
+  }
+  .legal-comparison tbody td {
+    overflow-x: auto;
+  }
+  .legal-comparison .legal-cell-label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+}

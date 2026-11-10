@@ -83,6 +83,13 @@
                 ><strong>Coding workflow</strong><small>Worktrees · tests · cleanup</small></span
               >
             </button>
+            <button class="scenario" type="button" data-scenario="legal" aria-pressed="false">
+              <span class="scenario-icon">10</span
+              ><span
+                ><strong>Legal &amp; deal rooms</strong
+                ><small>Terms · comparison · authorization</small></span
+              >
+            </button>
           </nav>
           <div class="sidebar-note">
             <strong>See each system in action.</strong>
@@ -159,6 +166,27 @@
             role="img"
             aria-label="Simulation workspace. Run a scenario to view actual engine data."
           ></canvas>
+          <section
+            id="legal-comparison"
+            class="legal-comparison"
+            aria-labelledby="legal-comparison-title"
+            hidden
+          >
+            <h3 id="legal-comparison-title">Agreement terms</h3>
+            <p id="legal-empty">
+              Run Legal &amp; deal rooms to compare the outbound summary with the source agreement.
+            </p>
+            <table id="legal-table" aria-labelledby="legal-comparison-title" role="table" hidden>
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Term</th>
+                  <th id="legal-source-heading" scope="col" role="columnheader">Source</th>
+                  <th id="legal-observed-heading" scope="col" role="columnheader">Observed</th>
+                </tr>
+              </thead>
+              <tbody id="legal-rows" role="rowgroup"></tbody>
+            </table>
+          </section>
           <div class="stage-caption">
             <span id="scope">Actual engine state · Synthetic scenario</span
             ><span id="frame-count">0 frames received</span>

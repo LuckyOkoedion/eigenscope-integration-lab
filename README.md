@@ -57,6 +57,7 @@ Run these commands from the repository directory. Each guide explains the setup,
 | [Healthcare](docs/scenarios/healthcare.md) | SciPy two-compartment IV pharmacokinetics, clinician sign-off and loopback HL7 FHIR R4 gate | `uv run --frozen eigenscope-lab run healthcare` |
 | [Multimodal](docs/scenarios/multimodal.md) | In-memory PCM16 WAV, CRC-32 PNG and RGBA OCVC container validation, span masking and SHA-256 round-trip | `uv run --frozen eigenscope-lab run multimodal` |
 | [RAG defense](docs/scenarios/rag.md) | NumPy/SciPy subspace & BM25/RRF/MMR retrieval, SIR poison quarantine, 6-retriever nDCG@5 and citation gate | `uv run --frozen eigenscope-lab run rag` |
+| [Legal & deal rooms](docs/scenarios/legal.md) | Source-vs-observed M&A terms, counterparty/escrow protection and read-only action authorization | `uv run --frozen eigenscope-lab run legal` |
 
 Pair the lab examples with EigenScope's product blueprints: [coding agents](https://eigenscope.guardianai.network/guide/coding), [tool-result protection](https://eigenscope.guardianai.network/guide/tool-results), [RAG retrieval defense](https://eigenscope.guardianai.network/rag), [telecom](https://eigenscope.guardianai.network/guide/telecom), [robotics](https://eigenscope.guardianai.network/guide/robotics), [Oil & Gas](https://eigenscope.guardianai.network/guide/oil-gas), [healthcare](https://eigenscope.guardianai.network/guide/healthcare) and [model platforms](https://eigenscope.guardianai.network/guide/model-platforms).
 
