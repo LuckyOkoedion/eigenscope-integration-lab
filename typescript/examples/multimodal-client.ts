@@ -380,7 +380,9 @@ export function createMultimodalHttpClient(options: {
             if (
               clip.width !== inputPayload.width ||
               clip.height !== inputPayload.height ||
-              clip.frame_count !== inputPayload.frame_count
+              clip.frame_count !== inputPayload.frame_count ||
+              (clip.version === 1 &&
+                projectedBytes.length !== 16 + clip.frame_count * clip.width * clip.height * 4)
             )
               throw new Error();
           } finally {

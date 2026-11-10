@@ -18,6 +18,7 @@ SCENARIOS = {
     "healthcare": ("healthcare", "run_healthcare", "healthcare"),
     "multimodal": ("multimodal", "run_multimodal", "multimodal"),
     "rag": ("rag", "run_rag", "rag"),
+    "legal": ("legal", "run_legal", None),
 }
 
 

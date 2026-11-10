@@ -17,7 +17,7 @@
     "format:check": "prettier --check . ../src/eigenscope_lab/assets/web"
   },
   "dependencies": {
-    "@eigenscope/sdk": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-typescript-0.2.7-000de10c/eigenscope-sdk-0.2.7.tgz"
+    "@eigenscope/sdk": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-typescript-0.2.8-b00813e9/eigenscope-sdk-0.2.8.tgz"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

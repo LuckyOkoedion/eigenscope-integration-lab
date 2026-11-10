@@ -198,3 +198,41 @@ test("origin validation rejects whitespace and non-origin URLs before fetch", ()
   }
   assert.equal(validateOrigin("https://example.invalid/"), "https://example.invalid");
 });
+
+test("SDK-rejected RAG envelopes retain only this client's nested mapping for cleanup", async () => {
+  const server = await localServer((request, response, body) => {
+    if (request.url === "/v1/rag/ingest") {
+      send(response, {
+        schema_version: 1,
+        body: {},
+        attestation: { vault_ticket: "vlt_synthetic_rag_owned" },
+      });
+    } else {
+      assert.equal(request.url, "/v1/vault/scrub");
+      send(response, {
+        schema_version: 1,
+        request_id: body.request_id,
+        status: "VAULT_TICKET_SCRUBBED",
+        vault_ticket: body.vault_ticket,
+        vault_ticket_scrubbed: true,
+      });
+    }
+  });
+  try {
+    const owned = createOwnedClient({
+      baseUrl: server.origin,
+      bearerToken: "synthetic-local-only",
+    });
+    await assert.rejects(
+      owned.client.ragIngest({ docId: "document_1", text: "Seats are prorated monthly." }),
+    );
+    assert.equal(owned.ownedTickets.size, 1);
+    assert.deepEqual(await owned.cleanupSince(new Set()), [
+      { name: "owned_cleanup", passed: true },
+    ]);
+    assert.equal(server.requests.at(-1).body.vault_ticket, "vlt_synthetic_rag_owned");
+    assert.equal(owned.ownedTickets.size, 0);
+  } finally {
+    await server.close();
+  }
+});

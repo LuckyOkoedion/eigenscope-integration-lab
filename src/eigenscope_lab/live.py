@@ -238,6 +238,12 @@ def _sdk_case(
             dec = client.sanitize_oil_gas_production_context(case.prompt)
         elif case.domain == "healthcare" and hasattr(client, "sanitize_clinical_phi"):
             dec = client.sanitize_clinical_phi(case.prompt)
+        elif case.domain == "legal":
+            from eigenscope_sdk import DOMAIN_SEPARATION_POLICIES
+
+            dec = client.decompose(
+                case.prompt, policy=DOMAIN_SEPARATION_POLICIES["LEGAL_CONTRACT_MA_ANALYTICS"]
+            )
         elif case.domain in {"tools", "rag"}:
             dec = client.sanitize_tool_output(case.prompt)
         else:
@@ -307,7 +313,7 @@ def _sdk_case(
             checks.append(_check("consumed_ticket_reuse_denied", False))
             consumed = False
         _checkpoint(check_cancelled)
-        if case.domain in {"robotics", "telecom", "oil-gas", "healthcare", "rag"}:
+        if case.domain in {"robotics", "telecom", "oil-gas", "healthcare", "rag", "legal"}:
             if case.domain == "robotics":
                 from .simulators.robotics import run_robotics
 
@@ -324,6 +330,10 @@ def _sdk_case(
                 from .simulators.rag import run_rag
 
                 external = run_rag(seed=seed, task_core=core, on_frame=on_frame)
+            elif case.domain == "legal":
+                from .simulators.legal import run_legal
+
+                external = run_legal(seed=seed, task_core=core, on_frame=on_frame)
             else:
                 from .simulators.oil_gas import run_oil_gas
 
@@ -553,7 +563,7 @@ def run_live(
         raise ValueError(
             "Unknown case; choose all, workbench, challenges, challenge-tasks, challenge-privacy, "
             "multimodal, multimodal-audio, multimodal-image, multimodal-video, "
-            "coding, tool-injection (or tools), telecom, robotics, oil-gas, healthcare, rag, email or unicode"
+            "coding, tool-injection (or tools), telecom, robotics, oil-gas, healthcare, rag, legal, email or unicode"
         )
     if case_id in multimodal_selections:
         from .multimodal_live import run_multimodal_live
@@ -1018,6 +1028,7 @@ def build_live_web_runners(
             "healthcare": make_domain_runner("healthcare"),
             "multimodal": run_live_multimodal_scenario,
             "rag": run_live_rag_scenario,
+            "legal": make_domain_runner("legal"),
             "provider": run_live_provider_scenario,
             "tools": run_live_tools_scenario,
             "coding": run_live_coding_scenario,

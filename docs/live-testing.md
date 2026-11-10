@@ -80,7 +80,7 @@ npm run typecheck
 npm run live
 ```
 
-The server-side example reads `ORTHOCORE_API_KEY` and passes it as `bearerToken`. It runs coding, telecom, robotics, Oil & Gas, healthcare and multimodal HTTP cases with a deterministic provider echo. The Python runner separately exercises the local provider over HTTP. See the [TypeScript guide](../typescript/README.md).
+The server-side example reads `ORTHOCORE_API_KEY` and passes it as `bearerToken`. It runs coding, telecom, robotics, Oil & Gas, healthcare, Legal, a RAG text boundary and multimodal HTTP cases with a deterministic provider echo. It also calls the official `ragIngest`, `ragRetrieve` and `ragEvaluate` methods directly, retaining a failed stage and cleaning up its own mappings when the SDK rejects a response. The Python runner separately exercises the local provider over HTTP. See the [TypeScript guide](../typescript/README.md).
 
 ## Read and share results
 

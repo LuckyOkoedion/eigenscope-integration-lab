@@ -66,18 +66,23 @@ export function createOwnedClient(options: {
       signal: AbortSignal.timeout(timeoutMs),
     });
     const bodyText = await response.text();
-    if (path === "/v1/decompose" && response.status === 200) {
+    if (
+      ["/v1/decompose", "/v1/rag/ingest", "/v1/rag/retrieve", "/v1/rag/evaluate"].includes(path) &&
+      response.status === 200
+    ) {
       // The SDK still receives the original bytes and performs every validation.
       // Retain only an opaque handle returned by this client's own request.
       try {
         const value: unknown = JSON.parse(bodyText);
+        const receipt =
+          path === "/v1/decompose" ? value : isRecord(value) ? value.attestation : undefined;
         if (
-          isRecord(value) &&
-          typeof value.vault_ticket === "string" &&
-          value.vault_ticket.startsWith("vlt_") &&
-          value.vault_ticket.length <= 512
+          isRecord(receipt) &&
+          typeof receipt.vault_ticket === "string" &&
+          receipt.vault_ticket.startsWith("vlt_") &&
+          receipt.vault_ticket.length <= 512
         ) {
-          owned.add(value.vault_ticket);
+          owned.add(receipt.vault_ticket);
         }
       } catch {
         /* Invalid JSON remains for the actual SDK to reject. */

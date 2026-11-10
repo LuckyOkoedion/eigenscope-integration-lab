@@ -42,6 +42,13 @@ const definitions = {
       "Inspect corpus ingestion, Subspace Incongruity Ratio (SIR) poison quarantine, 6-retriever nDCG@5 and citation verification.",
     scope: "Four-subspace BM25/SVD retrieval · Loopback HTTP citation gate",
   },
+  legal: {
+    title: "Legal & deal rooms",
+    engine: "Structured terms · Read-only action gate",
+    description:
+      "Compare indemnification, survival and governing law with source terms before releasing a deal-room summary.",
+    scope: "Synthetic agreement · Source comparison · Read-only authorization",
+  },
   provider: {
     title: "Model provider",
     engine: "OpenAI client · Loopback HTTP / SSE",
@@ -90,6 +97,13 @@ function actionTitle(name) {
   return name === "rag" || name === "tools" ? title : title.toLowerCase();
 }
 const CHECK_LABELS = {
+  counterparty_and_escrow_vaulted: "Counterparties, price and escrow references protected",
+  commercial_terms_preserved: "Cap, survival window and governing law match the source",
+  provided_task_core_respects_deal_room_gate: "Outbound summary passed the deal-room checks",
+  read_only_review_bound_to_terms: "Read-only review bound to the observed terms",
+  unapproved_mutations_rejected: "Payment, waiver and bank-change actions denied",
+  adversarial_rider_rejected: "Injected waiver and payment instructions rejected",
+  closing_checklist_digest_deterministic: "Agreement terms produce a repeatable digest",
   actual_decomposition_succeeded: "Live service decomposition completed",
   private_values_absent_from_outbound_core: "Sensitive identifiers removed before model call",
   task_terms_preserved: "Required task parameters preserved",
@@ -298,6 +312,42 @@ function updateRetrievalEvidence() {
     }),
   );
 }
+function updateLegalComparison() {
+  const shown = selected === "legal";
+  $("legal-comparison").hidden = !shown;
+  canvas.hidden = shown;
+  $("legal-empty").hidden = Boolean(frame);
+  $("legal-table").hidden = !frame;
+  const source = frame?.source_terms || {},
+    observed = frame?.observed_terms || {};
+  $("legal-rows").replaceChildren(
+    ...(shown && frame
+      ? [
+          ["Indemnification cap", "indemnification_cap_pct", "%"],
+          ["Survival window", "survival_months", " months"],
+          ["Governing law", "governing_law", ""],
+        ].map(([label, key, unit]) => {
+          const row = document.createElement("tr"),
+            term = document.createElement("th"),
+            expected = document.createElement("td"),
+            actual = document.createElement("td");
+          term.scope = "row";
+          term.textContent = label;
+          expected.textContent = source[key] == null ? "Awaiting source" : `${source[key]}${unit}`;
+          const value = document.createElement("strong"),
+            status = document.createElement("small");
+          value.textContent =
+            observed[key] == null ? "Missing or conflicting" : `${observed[key]}${unit}`;
+          const matches = frame.term_matches?.[key] === true;
+          status.textContent = matches ? "Matches" : "Needs review";
+          status.className = matches ? "term-match" : "term-mismatch";
+          actual.append(value, status);
+          row.append(term, expected, actual);
+          return row;
+        })
+      : []),
+  );
+}
 function updateMetrics() {
   const questions = {
     robotics: "Can the robot reach its goal while respecting its stop limits?",
@@ -308,6 +358,7 @@ function updateMetrics() {
     multimodal:
       "Are sensitive audio/visual spans masked cleanly and restored byte-for-byte via SHA-256?",
     rag: "Does the SIR gate quarantine query-poisoned passages before synthesis while preserving clean nDCG@5?",
+    legal: "Are the actual deal terms preserved, and are payment or waiver actions denied?",
     provider: "When does useful content arrive, and does the stream finish or stop correctly?",
     tools:
       "Which tool actions were permitted, which were denied, and where did untrusted data enter?",
@@ -321,12 +372,14 @@ function updateMetrics() {
     healthcare: "Serum concentration, FHIR orders and pump clamp",
     multimodal: "Media containers, span masking and SHA-256 round-trip",
     rag: "Subspace Incongruity Ratio (SIR) gate, retrieval ranking & nDCG@5",
+    legal: "Source terms, observed terms and permitted actions",
     provider: "Content arrival and stream lifecycle",
     tools: "Tool access and trust boundaries",
     coding: "Change, test and workspace isolation",
   }[selected];
   updateWorkflowEvidence();
   updateRetrievalEvidence();
+  updateLegalComparison();
   if (!frame) {
     const emptyOutcome = {
       idle: ["Awaiting run", "Measurements appear after execution"],
@@ -492,6 +545,29 @@ function updateMetrics() {
           ? `${frame.rejected_controls} / ${frame.expected_rejected_controls} denied`
           : "Pending final phase",
         "Poison, cross-tenant & receipt replay",
+      ],
+    ]);
+  } else if (selected === "legal") {
+    metrics([
+      [
+        "Terms matched",
+        `${Object.values(frame.term_matches || {}).filter((value) => value === true).length} / 3`,
+        "Cap, survival and governing law",
+      ],
+      [
+        "Summary gate",
+        frame.admitted === true ? "Admitted" : "Needs review",
+        "Compared with the source agreement",
+      ],
+      [
+        "Identifiers protected",
+        observedOutcome("counterparty_and_escrow_vaulted", "Confirmed"),
+        "Counterparties, price and escrow references",
+      ],
+      [
+        "Payment & waiver actions",
+        observedOutcome("unapproved_mutations_rejected", "Denied"),
+        "Read-only review authorization",
       ],
     ]);
   } else if (selected === "provider" && providerLatest) {
@@ -965,6 +1041,7 @@ function circle(x, y, radius, fill, stroke) {
   }
 }
 function draw() {
+  if (selected === "legal") return;
   const compact = canvas.clientWidth < 650;
   const desiredWidth = compact ? 640 : 1080;
   const workflow = selected === "tools" || selected === "coding";
