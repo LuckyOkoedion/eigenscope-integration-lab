@@ -331,9 +331,26 @@ function updateLegalComparison() {
             term = document.createElement("th"),
             expected = document.createElement("td"),
             actual = document.createElement("td");
+          row.setAttribute("role", "row");
           term.scope = "row";
+          term.setAttribute("role", "rowheader");
+          term.id = `legal-term-${key}`;
           term.textContent = label;
-          expected.textContent = source[key] == null ? "Awaiting source" : `${source[key]}${unit}`;
+          expected.setAttribute("role", "cell");
+          expected.setAttribute("headers", `${term.id} legal-source-heading`);
+          actual.setAttribute("role", "cell");
+          actual.setAttribute("headers", `${term.id} legal-observed-heading`);
+          const sourceLabel = document.createElement("span"),
+            observedLabel = document.createElement("span"),
+            sourceValue = document.createElement("span");
+          sourceLabel.className = observedLabel.className = "legal-cell-label";
+          sourceLabel.textContent = "Source";
+          observedLabel.textContent = "Observed";
+          sourceLabel.setAttribute("aria-hidden", "true");
+          observedLabel.setAttribute("aria-hidden", "true");
+          sourceValue.textContent =
+            source[key] == null ? "Awaiting source" : `${source[key]}${unit}`;
+          expected.append(sourceLabel, sourceValue);
           const value = document.createElement("strong"),
             status = document.createElement("small");
           value.textContent =
@@ -341,7 +358,7 @@ function updateLegalComparison() {
           const matches = frame.term_matches?.[key] === true;
           status.textContent = matches ? "Matches" : "Needs review";
           status.className = matches ? "term-match" : "term-mismatch";
-          actual.append(value, status);
+          actual.append(observedLabel, value, status);
           row.append(term, expected, actual);
           return row;
         })

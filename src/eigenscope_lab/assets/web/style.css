@@ -992,3 +992,61 @@ canvas.workflow {
     font-size: 12px;
   }
 }
+
+.legal-cell-label {
+  display: none;
+}
+@media (max-width: 420px) {
+  .legal-comparison table,
+  .legal-comparison tbody {
+    display: block;
+  }
+  .legal-comparison thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .legal-comparison tbody {
+    display: grid;
+    gap: 14px;
+  }
+  .legal-comparison tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface-soft);
+  }
+  .legal-comparison tbody th,
+  .legal-comparison tbody td {
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
+  .legal-comparison tbody th:first-child {
+    grid-column: 1 / -1;
+    width: auto;
+    font-size: 15px;
+    font-weight: 650;
+  }
+  .legal-comparison tbody td {
+    overflow-x: auto;
+  }
+  .legal-comparison .legal-cell-label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+}

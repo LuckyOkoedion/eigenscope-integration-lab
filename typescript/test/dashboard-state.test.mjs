@@ -498,11 +498,24 @@ test("Legal is selectable and shows observed terms without replacing them with d
   const rows = app.get("legal-rows").children;
   assert.equal(app.get("scene").hidden, true);
   assert.equal(app.get("legal-table").hidden, false);
-  assert.equal(rows[0].children[1].textContent, "12.5%");
-  assert.equal(rows[0].children[2].children[0].textContent, "90%");
-  assert.equal(rows[0].children[2].children[1].textContent, "Needs review");
-  assert.equal(rows[1].children[2].children[0].textContent, "Missing or conflicting");
-  assert.equal(rows[2].children[2].children[0].textContent, "Ontario");
+  assert.equal(rows[0].role, "row");
+  assert.equal(rows[0].children[0].role, "rowheader");
+  assert.equal(
+    rows[0].children[1].headers,
+    "legal-term-indemnification_cap_pct legal-source-heading",
+  );
+  assert.equal(
+    rows[0].children[2].headers,
+    "legal-term-indemnification_cap_pct legal-observed-heading",
+  );
+  assert.equal(rows[0].children[1].children[0].textContent, "Source");
+  assert.equal(rows[0].children[2].children[0].textContent, "Observed");
+  assert.equal(rows[0].children[1].children[0]["aria-hidden"], "true");
+  assert.equal(rows[0].children[1].children[1].textContent, "12.5%");
+  assert.equal(rows[0].children[2].children[1].textContent, "90%");
+  assert.equal(rows[0].children[2].children[2].textContent, "Needs review");
+  assert.equal(rows[1].children[2].children[1].textContent, "Missing or conflicting");
+  assert.equal(rows[2].children[2].children[1].textContent, "Ontario");
   assert.equal(app.get("metrics").children[0].children[1].textContent, "0 / 3");
   assert.equal(app.get("run-status").textContent, "Needs attention");
   app.read('selectScenario("robotics")');

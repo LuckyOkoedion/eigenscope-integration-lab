@@ -176,15 +176,15 @@
             <p id="legal-empty">
               Run Legal &amp; deal rooms to compare the outbound summary with the source agreement.
             </p>
-            <table id="legal-table" aria-labelledby="legal-comparison-title" hidden>
-              <thead>
-                <tr>
-                  <th scope="col">Term</th>
-                  <th scope="col">Source</th>
-                  <th scope="col">Observed</th>
+            <table id="legal-table" aria-labelledby="legal-comparison-title" role="table" hidden>
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Term</th>
+                  <th id="legal-source-heading" scope="col" role="columnheader">Source</th>
+                  <th id="legal-observed-heading" scope="col" role="columnheader">Observed</th>
                 </tr>
               </thead>
-              <tbody id="legal-rows"></tbody>
+              <tbody id="legal-rows" role="rowgroup"></tbody>
             </table>
           </section>
           <div class="stage-caption">
