@@ -41,13 +41,19 @@ class DealTerms:
 
 
 DEFAULT_TERMS = DealTerms()
+_NUMBER = r"(?<![\w.+−-])([+−-]?\s*\d+(?:\.\d+)?)"
+_INTEGER = r"(?<![\w.+−-])([+−-]?\s*\d+)(?![\d.])"
 _CAP = (
-    r"(\d+(?:\.\d+)?)\s*(?:%|percent)\s+(?:indemnification|indemnity|liability)\s+cap",
-    r"(?:indemnification|indemnity|liability)\s+cap\s*(?:of|at|is|:|=)?\s*(\d+(?:\.\d+)?)\s*(?:%|percent)",
+    _NUMBER + r"\s*(?:%|percent)\s+(?:indemnification|indemnity|liability)\s+cap",
+    r"(?:indemnification|indemnity|liability)\s+cap\s*(?:of|at|is|:|=)?\s*"
+    + _NUMBER
+    + r"\s*(?:%|percent)",
 )
 _SURVIVAL = (
-    r"(\d+)\s*[- ]?\s*months?\s+survival(?:\s+(?:window|period))?",
-    r"survival(?:\s+(?:window|period))?\s*(?:of|at|is|:|=|for)?\s*(\d+)\s*[- ]?\s*months?",
+    _INTEGER + r"\s*[- ]?\s*months?\s+survival(?:\s+(?:window|period))?",
+    r"survival(?:\s+(?:window|period))?\s*(?:of|at|is|:|=|for)?\s*"
+    + _INTEGER
+    + r"\s*[- ]?\s*months?",
 )
 _LAW = (
     r"^(?:summarize|review|explain)?\s*(?:the\s+)?([a-z]+(?:\s+[a-z]+){0,4})\s+governing\s+law\b",
@@ -77,11 +83,28 @@ _READ_ONLY = re.compile(
 )
 
 
+def _term_negated(text: str, match: re.Match[str]) -> bool:
+    prefix = text[: match.start()]
+    suffix = text[match.end() :]
+    return bool(
+        re.search(r"\b(?:no|without|not)(?:\s+(?:a|an|the|any|such|applicable))*\s*$", prefix, re.I)
+        or re.match(
+            r"\s*(?:(?:does|do|shall|will)\s+not\s+(?:apply|exist|govern)|is\s+(?:not\s+applicable|absent|excluded))\b",
+            suffix,
+            re.I,
+        )
+    )
+
+
 def _unique_matches(text: str, patterns: Sequence[str], convert: Callable) -> list[Any]:
     values = []
     for pattern in patterns:
         for match in re.finditer(pattern, text, re.IGNORECASE):
-            value = convert(match.group(1))
+            value = (
+                None
+                if _term_negated(text, match)
+                else convert(re.sub(r"\s+", "", match.group(1)).replace("−", "-"))
+            )
             if value not in values:
                 values.append(value)
     return values
@@ -90,10 +113,13 @@ def _unique_matches(text: str, patterns: Sequence[str], convert: Callable) -> li
 def _observed_terms(text: str) -> tuple[dict[str, Any], dict[str, list[Any]]]:
     caps = _unique_matches(text, _CAP, lambda value: float(Decimal(value)))
     survival = _unique_matches(text, _SURVIVAL, int)
-    laws: dict[str, str] = {}
+    laws: dict[str, str | None] = {}
     for clause in re.split(r"[,;.]|\band\b", text, flags=re.I):
         for pattern in _LAW:
             for match in re.finditer(pattern, clause.strip(), re.I):
+                if _term_negated(clause.strip(), match):
+                    laws.setdefault("", None)
+                    continue
                 value = " ".join(match.group(1).split())
                 if not set(value.casefold().split()) & {
                     "do",

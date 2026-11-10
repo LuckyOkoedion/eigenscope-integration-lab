@@ -192,3 +192,41 @@ def test_reading_a_reported_rider_does_not_request_its_execution():
         ]
         is True
     )
+
+
+@pytest.mark.parametrize("sign", ["-", "−", "− "])
+@pytest.mark.parametrize("field", ["cap", "survival"])
+def test_signed_negative_terms_never_become_positive_digits(sign, field):
+    text = (
+        SUMMARY.replace("12.5%", sign + "12.5%")
+        if field == "cap"
+        else SUMMARY.replace("24-month", sign + "24-month")
+    )
+    result = evaluate(text)
+    assert result["admitted"] is False
+    key = "indemnification_cap_pct" if field == "cap" else "survival_months"
+    assert result["observed_terms"][key] == (-12.5 if field == "cap" else -24)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        SUMMARY.replace("the 12.5%", "that there is no 12.5%"),
+        SUMMARY.replace("24-month", "no 24-month"),
+        SUMMARY + " There is no 12.5% indemnification cap.",
+        SUMMARY + " The 24-month survival window does not apply.",
+    ],
+)
+def test_negated_terms_do_not_count_as_affirmative_observations(text):
+    result = evaluate(text)
+    assert result["admitted"] is False
+    assert not all(result["term_matches"].values())
+
+
+def test_action_negation_preserves_the_affirmative_numeric_terms():
+    result = evaluate(
+        SUMMARY
+        + " Do not waive the 12.5% indemnification cap or change the 24-month survival window."
+    )
+    assert result["admitted"] is True
+    assert result["observed_terms"] == SOURCE.as_dict()
