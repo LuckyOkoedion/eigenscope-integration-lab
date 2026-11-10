@@ -191,163 +191,256 @@ def run_rag_live_http(
 
     try:
         with httpx.Client(timeout=timeout, follow_redirects=False, trust_env=False) as http:
-            ingest_start = time.perf_counter()
-            ingested_docs: list[dict[str, Any]] = []
-            ingest_ok = True
-            for passage in SEED_PASSAGES:
-                _checkpoint(check_cancelled)
-                req_id = _new_uuidv7()
-                resp = http.post(
-                    f"{base_url}/v1/rag/ingest",
-                    headers=headers(req_id),
-                    content=json.dumps(
-                        {
-                            "schema_version": 1,
-                            "request_id": req_id,
-                            "doc_id": passage.doc_id,
-                            "title": passage.title,
-                            "text": passage.text,
-                            "sir_threshold": DEFAULT_SIR_THRESHOLD,
-                        }
-                    ).encode("utf-8"),
-                )
-                row["http_status"] = resp.status_code
-                if resp.status_code != 200:
-                    ingest_ok = False
-                    break
-                body = _validate_receipt_envelope(resp.json())
-                meta = body.get("auxiliary_metadata")
-                if not isinstance(meta, dict) or body.get("doc_id") != passage.doc_id:
-                    raise ServiceResponseContractError("Invalid /v1/rag/ingest body metadata")
-                ingested_docs.append({"doc_id": passage.doc_id, "metadata": meta})
-            row["metrics"]["rag_ingest_http_wall_ms"] = round(
-                (time.perf_counter() - ingest_start) * 1000, 3
-            )
-            checks.append(
-                _check(
-                    "rag_ingest_succeeded_and_receipt_fields_consistent",
-                    ingest_ok and len(ingested_docs) == len(SEED_PASSAGES),
-                    ingested_count=len(ingested_docs),
-                    http_status=row.get("http_status", 0),
-                )
-            )
+            owned_tickets: list[str] = []
 
-            if ingest_ok:
-                _checkpoint(check_cancelled)
-                ret_start = time.perf_counter()
-                ret_id = _new_uuidv7()
-                ret_resp = http.post(
-                    f"{base_url}/v1/rag/retrieve",
-                    headers=headers(ret_id),
-                    content=json.dumps(
-                        {
-                            "schema_version": 1,
-                            "request_id": ret_id,
-                            "query": SEED_QUERIES[0].text,
-                            "top_k": DEFAULT_TOP_K,
-                            "candidate_pool_n": len(SEED_PASSAGES),
-                            "sir_threshold": DEFAULT_SIR_THRESHOLD,
-                        }
-                    ).encode("utf-8"),
-                )
-                row["http_status"] = ret_resp.status_code
-                row["metrics"]["rag_retrieve_http_wall_ms"] = round(
-                    (time.perf_counter() - ret_start) * 1000, 3
-                )
-                if ret_resp.status_code == 200:
-                    ret_body = _validate_receipt_envelope(ret_resp.json())
-                    admitted_ids, quarantined_ids = _retrieval_ids(ret_body)
-                    checks.append(
-                        _check("rag_retrieve_succeeded_and_receipt_fields_consistent", True)
-                    )
-                    poison_ids = {"doc_47ac", "doc_b953"}
-                    poison_quarantined = poison_ids.issubset(set(quarantined_ids)) and not (
-                        poison_ids & set(admitted_ids)
-                    )
-                    checks.append(
-                        _check(
-                            "rag_sir_gate_quarantines_poisoned_passages",
-                            poison_quarantined,
-                            admitted_poison_count=len(poison_ids & set(admitted_ids)),
-                            quarantined_count=len(quarantined_ids),
-                        )
-                    )
-                    checks.append(
-                        _check(
-                            "rag_clean_ground_truth_ranked_first",
-                            bool(admitted_ids) and admitted_ids[0] == "doc_6d0f",
-                            top_admitted_doc_id=admitted_ids[0] if admitted_ids else "none",
-                        )
-                    )
-                else:
-                    checks.append(
-                        _check(
-                            "rag_retrieve_succeeded_and_receipt_fields_consistent",
-                            False,
-                            http_status=ret_resp.status_code,
-                        )
-                    )
+            def _record_envelope_ticket(payload: Any) -> None:
+                if isinstance(payload, dict):
+                    att = payload.get("attestation")
+                    if isinstance(att, dict):
+                        vt = att.get("vault_ticket")
+                        if isinstance(vt, str) and vt.startswith("vlt_") and vt not in owned_tickets:
+                            owned_tickets.append(vt)
 
-                eval_start = time.perf_counter()
-                _checkpoint(check_cancelled)
-                eval_id = _new_uuidv7()
-                eval_docs = [
-                    {
-                        "doc_id": p.doc_id,
-                        "text": p.text,
-                        **(
-                            {"poison": p.poison, "target_query_id": p.target_query_id}
-                            if p.poison is not None
-                            else {}
-                        ),
-                    }
-                    for p in SEED_PASSAGES
-                ]
-                eval_queries = [
-                    {"query_id": q.query_id, "text": q.text, "grades": dict(q.grades)}
-                    for q in SEED_QUERIES
-                ]
-                eval_resp = http.post(
-                    f"{base_url}/v1/rag/evaluate",
-                    headers=headers(eval_id),
-                    content=json.dumps(
+            try:
+                ingest_start = time.perf_counter()
+                ingested_docs: list[dict[str, Any]] = []
+                ingest_ok = True
+                for passage in SEED_PASSAGES:
+                    _checkpoint(check_cancelled)
+                    req_id = _new_uuidv7()
+                    resp = http.post(
+                        f"{base_url}/v1/rag/ingest",
+                        headers=headers(req_id),
+                        content=json.dumps(
+                            {
+                                "schema_version": 1,
+                                "request_id": req_id,
+                                "doc_id": passage.doc_id,
+                                "title": passage.title,
+                                "text": passage.text,
+                                "sir_threshold": DEFAULT_SIR_THRESHOLD,
+                            }
+                        ).encode("utf-8"),
+                    )
+                    row["http_status"] = resp.status_code
+                    if resp.status_code != 200:
+                        ingest_ok = False
+                        break
+                    payload = resp.json()
+                    _record_envelope_ticket(payload)
+                    body = _validate_receipt_envelope(payload)
+                    meta = body.get("auxiliary_metadata")
+                    if not isinstance(meta, dict) or body.get("doc_id") != passage.doc_id:
+                        raise ServiceResponseContractError("Invalid /v1/rag/ingest body metadata")
+                    ingested_docs.append({"doc_id": passage.doc_id, "metadata": meta})
+                row["metrics"]["rag_ingest_http_wall_ms"] = round(
+                    (time.perf_counter() - ingest_start) * 1000, 3
+                )
+                checks.append(
+                    _check(
+                        "rag_ingest_succeeded_and_receipt_fields_consistent",
+                        ingest_ok and len(ingested_docs) == len(SEED_PASSAGES),
+                        ingested_count=len(ingested_docs),
+                        http_status=row.get("http_status", 0),
+                    )
+                )
+
+                if ingest_ok:
+                    _checkpoint(check_cancelled)
+                    ret_start = time.perf_counter()
+                    ret_id = _new_uuidv7()
+                    ret_resp = http.post(
+                        f"{base_url}/v1/rag/retrieve",
+                        headers=headers(ret_id),
+                        content=json.dumps(
+                            {
+                                "schema_version": 1,
+                                "request_id": ret_id,
+                                "query": SEED_QUERIES[0].text,
+                                "top_k": DEFAULT_TOP_K,
+                                "candidate_pool_n": len(SEED_PASSAGES),
+                                "sir_threshold": DEFAULT_SIR_THRESHOLD,
+                            }
+                        ).encode("utf-8"),
+                    )
+                    row["http_status"] = ret_resp.status_code
+                    row["metrics"]["rag_retrieve_http_wall_ms"] = round(
+                        (time.perf_counter() - ret_start) * 1000, 3
+                    )
+                    if ret_resp.status_code == 200:
+                        ret_payload = ret_resp.json()
+                        _record_envelope_ticket(ret_payload)
+                        ret_body = _validate_receipt_envelope(ret_payload)
+                        admitted_ids, quarantined_ids = _retrieval_ids(ret_body)
+                        checks.append(
+                            _check("rag_retrieve_succeeded_and_receipt_fields_consistent", True)
+                        )
+                        poison_ids = {"doc_47ac", "doc_b953"}
+                        poison_quarantined = poison_ids.issubset(set(quarantined_ids)) and not (
+                            poison_ids & set(admitted_ids)
+                        )
+                        checks.append(
+                            _check(
+                                "rag_sir_gate_quarantines_poisoned_passages",
+                                poison_quarantined,
+                                admitted_poison_count=len(poison_ids & set(admitted_ids)),
+                                quarantined_count=len(quarantined_ids),
+                            )
+                        )
+                        checks.append(
+                            _check(
+                                "rag_clean_ground_truth_ranked_first",
+                                bool(admitted_ids) and admitted_ids[0] == "doc_6d0f",
+                                top_admitted_doc_id=admitted_ids[0] if admitted_ids else "none",
+                            )
+                        )
+                    else:
+                        checks.append(
+                            _check(
+                                "rag_retrieve_succeeded_and_receipt_fields_consistent",
+                                False,
+                                http_status=ret_resp.status_code,
+                            )
+                        )
+
+                    eval_start = time.perf_counter()
+                    _checkpoint(check_cancelled)
+                    eval_id = _new_uuidv7()
+                    eval_docs = [
                         {
-                            "schema_version": 1,
-                            "request_id": eval_id,
-                            "documents": eval_docs,
-                            "queries": eval_queries,
-                            "top_k": DEFAULT_TOP_K,
-                            "sir_threshold": DEFAULT_SIR_THRESHOLD,
+                            "doc_id": p.doc_id,
+                            "text": p.text,
+                            **(
+                                {"poison": p.poison, "target_query_id": p.target_query_id}
+                                if p.poison is not None
+                                else {}
+                            ),
                         }
-                    ).encode("utf-8"),
-                )
-                row["http_status"] = eval_resp.status_code
-                row["metrics"]["rag_evaluate_http_wall_ms"] = round(
-                    (time.perf_counter() - eval_start) * 1000, 3
-                )
-                if eval_resp.status_code == 200:
-                    eval_body = _validate_receipt_envelope(eval_resp.json())
-                    ortho_row = _evaluation_row(eval_body)
-                    exposure = float(ortho_row.get("poison_target_exposure_pct", 100.0))
-                    ndcg = float(ortho_row.get("clean_ndcg_at_k", 0.0))
-                    row["metrics"]["orthocore_poison_exposure_pct"] = exposure
-                    row["metrics"]["orthocore_clean_ndcg_at_k"] = round(ndcg, 4)
-                    checks.append(
-                        _check(
-                            "rag_evaluate_benchmark_zero_poison_exposure",
-                            exposure == 0.0 and ndcg >= 0.85,
-                            poison_target_exposure_pct=exposure,
-                            clean_ndcg_at_k=round(ndcg, 4),
-                        )
+                        for p in SEED_PASSAGES
+                    ]
+                    eval_queries = [
+                        {"query_id": q.query_id, "text": q.text, "grades": dict(q.grades)}
+                        for q in SEED_QUERIES
+                    ]
+                    eval_resp = http.post(
+                        f"{base_url}/v1/rag/evaluate",
+                        headers=headers(eval_id),
+                        content=json.dumps(
+                            {
+                                "schema_version": 1,
+                                "request_id": eval_id,
+                                "documents": eval_docs,
+                                "queries": eval_queries,
+                                "top_k": DEFAULT_TOP_K,
+                                "sir_threshold": DEFAULT_SIR_THRESHOLD,
+                            }
+                        ).encode("utf-8"),
                     )
-                else:
-                    checks.append(
-                        _check(
-                            "rag_evaluate_benchmark_zero_poison_exposure",
-                            False,
-                            http_status=eval_resp.status_code,
-                        )
+                    row["http_status"] = eval_resp.status_code
+                    row["metrics"]["rag_evaluate_http_wall_ms"] = round(
+                        (time.perf_counter() - eval_start) * 1000, 3
                     )
+                    if eval_resp.status_code == 200:
+                        eval_payload = eval_resp.json()
+                        _record_envelope_ticket(eval_payload)
+                        eval_body = _validate_receipt_envelope(eval_payload)
+                        ortho_row = _evaluation_row(eval_body)
+                        exposure = float(ortho_row.get("poison_target_exposure_pct", 100.0))
+                        ndcg = float(ortho_row.get("clean_ndcg_at_k", 0.0))
+                        row["metrics"]["orthocore_poison_exposure_pct"] = exposure
+                        row["metrics"]["orthocore_clean_ndcg_at_k"] = round(ndcg, 4)
+                        checks.append(
+                            _check(
+                                "rag_evaluate_benchmark_zero_poison_exposure",
+                                exposure == 0.0 and ndcg >= 0.85,
+                                poison_target_exposure_pct=exposure,
+                                clean_ndcg_at_k=round(ndcg, 4),
+                            )
+                        )
+                    else:
+                        checks.append(
+                            _check(
+                                "rag_evaluate_benchmark_zero_poison_exposure",
+                                False,
+                                http_status=eval_resp.status_code,
+                            )
+                        )
+            finally:
+                scrubbed_count = 0
+                for ticket in list(owned_tickets):
+                    try:
+                        scrub_id = _new_uuidv7()
+                        scrub_resp = http.post(
+                            f"{base_url}/v1/vault/scrub",
+                            headers=headers(scrub_id),
+                            content=json.dumps(
+                                {
+                                    "schema_version": 1,
+                                    "request_id": scrub_id,
+                                    "vault_ticket": ticket,
+                                }
+                            ).encode("utf-8"),
+                        )
+                        scrub_body = scrub_resp.json() if scrub_resp.status_code == 200 else {}
+                        scrub_ok = (
+                            scrub_resp.status_code == 200
+                            and isinstance(scrub_body, dict)
+                            and scrub_body.get("status") == "VAULT_TICKET_SCRUBBED"
+                            and scrub_body.get("vault_ticket") == ticket
+                            and scrub_body.get("vault_ticket_scrubbed") is True
+                        )
+                        if scrub_ok:
+                            scrubbed_count += 1
+                        checks.append(
+                            _check(
+                                "owned_rag_http_ticket_cleanup",
+                                scrub_ok,
+                                http_status=scrub_resp.status_code,
+                            )
+                        )
+                    except Exception as exc:
+                        checks.append(
+                            _check("owned_rag_http_ticket_cleanup", False, **safe_error(exc))
+                        )
+                if owned_tickets:
+                    row["metrics"]["rag_http_scrubbed_tickets"] = scrubbed_count
+                    if scrubbed_count == len(owned_tickets):
+                        try:
+                            replay_id = _new_uuidv7()
+                            replay_resp = http.post(
+                                f"{base_url}/v1/vault/scrub",
+                                headers=headers(replay_id),
+                                content=json.dumps(
+                                    {
+                                        "schema_version": 1,
+                                        "request_id": replay_id,
+                                        "vault_ticket": owned_tickets[0],
+                                    }
+                                ).encode("utf-8"),
+                            )
+                            replay_body = (
+                                replay_resp.json() if replay_resp.status_code == 410 else {}
+                            )
+                            replay_denied = (
+                                replay_resp.status_code == 410
+                                and isinstance(replay_body, dict)
+                                and replay_body.get("error_code") == "VAULT_TICKET_SCRUBBED"
+                            )
+                            checks.append(
+                                _check(
+                                    "owned_rag_http_scrubbed_ticket_replay_denied_410",
+                                    replay_denied,
+                                    http_status=replay_resp.status_code,
+                                )
+                            )
+                        except Exception as exc:
+                            checks.append(
+                                _check(
+                                    "owned_rag_http_scrubbed_ticket_replay_denied_410",
+                                    False,
+                                    **safe_error(exc),
+                                )
+                            )
     except Exception as exc:
         _record_exception(row, exc)
     finally:

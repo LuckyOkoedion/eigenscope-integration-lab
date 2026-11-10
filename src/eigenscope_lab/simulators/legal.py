@@ -69,8 +69,13 @@ _MUTATION = re.compile(
 )
 _PASSIVE_MUTATION = re.compile(
     r"\b(?:escrow|deposit|funds|payment|bank|account|cap|liability|law|jurisdiction)\b"
-    r"[^.;\n]{0,55}\b(?:must|shall|should|will|can|may)\s+(?:not\s+)?be\s+"
+    r"[^.;\n]{0,55}\b(?:must|shall|should|will|can|may)\s+(?:not\s+)?(?:fail\s+to\s+)?be\s+"
     r"(?:waived|removed|released|remitted|wired|transferred|disbursed|replaced|changed)\b",
+    re.IGNORECASE,
+)
+_DOUBLE_NEGATION = re.compile(
+    r"\b(?:(?:do|must|shall|should|may|can|will|cannot|can't)\s+not|never)\s+"
+    r"(?:fail|hesitate|forget|omit|neglect|delay|refuse|decline)(?:\s+to)?\b",
     re.IGNORECASE,
 )
 _NEGATION = re.compile(
@@ -87,9 +92,17 @@ def _term_negated(text: str, match: re.Match[str]) -> bool:
     prefix = text[: match.start()]
     suffix = text[match.end() :]
     return bool(
-        re.search(r"\b(?:no|without|not)(?:\s+(?:a|an|the|any|such|applicable))*\s*$", prefix, re.I)
+        re.search(
+            r"\b(?:no|without|not|inapplicable|void(?:ed)?|superseded|terminated|expired|former)"
+            r"(?:\s+(?:a|an|the|any|such|applicable))*\s*$",
+            prefix,
+            re.I,
+        )
         or re.match(
-            r"\s*(?:(?:does|do|shall|will)\s+not\s+(?:apply|exist|govern)|is\s+(?:not\s+applicable|absent|excluded))\b",
+            r"\s*\(?\s*(?:(?:which|that)\s+)?(?:(?:has|have|had)\s+been\s+|was\s+|were\s+|is\s+|are\s+|be(?:ing)?\s+)?"
+            r"(?:(?:no\s+longer|never)\s+(?:appl(?:y|ies|icable)|govern(?:s|ing)?|in\s+effect|valid|enforced)|"
+            r"(?:does|do|shall|will|did)\s+not\s+(?:apply|exist|govern)|"
+            r"not\s+applicable|inapplicable|absent|excluded|waived|void(?:ed)?|removed|eliminated|lifted|superseded|terminated|cancelled|canceled|expired)\b",
             suffix,
             re.I,
         )
@@ -157,10 +170,12 @@ def _mutation_requests(text: str) -> list[str]:
         r"[.,;:\n]|\b(?:and|but|however|instead|then|while\s+you)\b", inspected, flags=re.I
     ):
         for match in _PASSIVE_MUTATION.finditer(clause):
-            if not _NEGATION.search(match.group(0)):
+            cleaned_passive = _DOUBLE_NEGATION.sub("", match.group(0))
+            if not _NEGATION.search(cleaned_passive):
                 requests.append(match.group(0).strip())
         for match in _MUTATION.finditer(clause):
             prefix = re.sub(r"\bnot\s+only\b", "", clause[: match.start()], flags=re.I)
+            prefix = _DOUBLE_NEGATION.sub("", prefix)
             if _READ_ONLY.search(clause) and re.search(
                 r"\b(?:whether|says?|requests?|instructs?|evidence)\b", prefix, re.I
             ):

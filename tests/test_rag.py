@@ -124,8 +124,12 @@ def test_full_rag_scenario_emits_frames_and_passes_all_checks(rag_index):
 
 def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
     httpx = pytest.importorskip("httpx")
+    ticket_counter = 0
+    scrubbed_tickets = set()
 
     def make_sealed(body):
+        nonlocal ticket_counter
+        ticket_counter += 1
         return {
             "schema_version": 1,
             "body": {
@@ -137,6 +141,7 @@ def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
                 "receipt_sha256": "sha256:" + "a" * 64,
                 "signature": "ed25519:" + "b" * 128,
                 "single_use_enforced": True,
+                "vault_ticket": f"vlt_rag_test_{ticket_counter:04d}",
             },
         }
 
@@ -161,6 +166,27 @@ def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
         def post(self, url, *, headers, content):
             req = __import__("json").loads(content.decode("utf-8"))
             assert headers["Authorization"] == "Bearer synthetic-key"
+            if url.endswith("/v1/vault/scrub"):
+                tkt = req["vault_ticket"]
+                if tkt in scrubbed_tickets:
+                    return FakeResp(
+                        410,
+                        {
+                            "schema_version": 1,
+                            "error_code": "VAULT_TICKET_SCRUBBED",
+                            "reason_code": "TICKET_ZEROIZED_OR_TTL_EXPIRED",
+                        },
+                    )
+                scrubbed_tickets.add(tkt)
+                return FakeResp(
+                    200,
+                    {
+                        "schema_version": 1,
+                        "status": "VAULT_TICKET_SCRUBBED",
+                        "vault_ticket": tkt,
+                        "vault_ticket_scrubbed": True,
+                    },
+                )
             if url.endswith("/v1/rag/ingest"):
                 return FakeResp(
                     200,
@@ -231,5 +257,10 @@ def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
     monkeypatch.setattr(httpx, "Client", FakeClient)
     row = run_rag_live_http(base_url="https://sdk.example.invalid", key="synthetic-key")
     assert outcome(row) == "PASS", row
+    assert len(scrubbed_tickets) == len(SEED_PASSAGES) + 2
+    assert any(
+        c["name"] == "owned_rag_http_scrubbed_ticket_replay_denied_410" and c["passed"]
+        for c in row["checks"]
+    )
     with pytest.raises(ServiceResponseContractError):
         _validate_receipt_envelope({"schema_version": 1, "body": {}, "attestation": {}})
