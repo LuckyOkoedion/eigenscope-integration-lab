@@ -1,11 +1,13 @@
 /** Actual published SDK validators against explicitly synthetic wire responses. */
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import {
   EigenScopeTypeScriptClient as EigenScopeClient,
   computeSymbolTableCommitment,
+  EIGENSCOPE_TS_CLIENT_VERSION,
 } from "@eigenscope/sdk";
 
 const digest = "sha256:" + "0".repeat(64);
@@ -187,4 +189,59 @@ test("real fetch transport reaches a local HTTP fixture with authentication bind
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
   }
+});
+
+function baselineFixture(value) {
+  value.telemetry.mi_measurement_scope = "accepted_v1_baseline";
+  value.telemetry.mi_leakage_bound_bits = null;
+  value.telemetry.bound_certified = false;
+  value.telemetry.baseline_acceptance_sha256 = digest;
+  value.telemetry.baseline_package_digest = digest;
+  value.telemetry.max_cross_subspace_cosine = 0;
+  return value;
+}
+
+test("null MI telemetry is rejected without an explicit client option", async () => {
+  const headers = [];
+  const client = new EigenScopeClient({
+    bearerToken: "synthetic-local-only",
+    transport: async (_path, sentHeaders, body) => {
+      headers.push(sentHeaders);
+      return {
+        status: 200,
+        bodyText: JSON.stringify(baselineFixture(await fixture(JSON.parse(body)))),
+      };
+    },
+  });
+  await assert.rejects(client.decompose({ text: "Compute 17 * 24.", returnTokenSaliency: false }));
+  assert.ok(headers.length > 0);
+  assert.ok(headers.every((row) => row["X-OrthoCore-Accept-Baseline"] === undefined));
+});
+
+test("the documented baseline option is explicit in its outgoing request", async () => {
+  let observedHeaders;
+  const client = new EigenScopeClient({
+    bearerToken: "synthetic-local-only",
+    acceptV1Baseline: true,
+    transport: async (_path, headers, body) => {
+      observedHeaders = headers;
+      return {
+        status: 200,
+        bodyText: JSON.stringify(baselineFixture(await fixture(JSON.parse(body)))),
+      };
+    },
+  });
+  const result = await client.decompose({ text: "Compute 17 * 24.", returnTokenSaliency: false });
+  assert.equal(observedHeaders["X-OrthoCore-Accept-Baseline"], "true");
+  assert.equal(result.telemetry.mi_leakage_bound_bits, null);
+  client.zeroize();
+});
+
+test("TypeScript and Wasm packages use the same official SDK release", () => {
+  const wasmPackage = JSON.parse(
+    readFileSync(
+      new URL("../node_modules/@eigenscope/orthocore-wasm/package.json", import.meta.url),
+    ),
+  );
+  assert.equal(wasmPackage.version, EIGENSCOPE_TS_CLIENT_VERSION);
 });

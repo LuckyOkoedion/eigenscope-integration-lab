@@ -198,7 +198,11 @@ def run_rag_live_http(
                     att = payload.get("attestation")
                     if isinstance(att, dict):
                         vt = att.get("vault_ticket")
-                        if isinstance(vt, str) and vt.startswith("vlt_") and vt not in owned_tickets:
+                        if (
+                            isinstance(vt, str)
+                            and vt.startswith("vlt_")
+                            and vt not in owned_tickets
+                        ):
                             owned_tickets.append(vt)
 
             try:

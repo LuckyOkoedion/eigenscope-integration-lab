@@ -24,7 +24,7 @@ robotics = ["mujoco>=3.3,<3.4; sys_platform == 'darwin' and platform_machine == 
 telecom = ["simpy>=4.1,<5"]
 provider = ["openai>=2,<3", "httpx>=0.28,<1"]
 tools = ["mcp>=1.30,<2", "cryptography>=50,<51"]
-live = ["eigenscope-sdk @ https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.8-c313c97a/eigenscope_sdk-0.2.8-py3-none-any.whl#sha256=c313c97a64e8d1a2e56fb32e71001991bad90861aa3859bf740d66b1c1cc7c0a"]
+live = ["eigenscope-sdk @ https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl#sha256=60693e24ec67b59409a372a0de8edd90ebf8c452c927a2f4e0dc9e585f5655b7"]
 oil-gas = ["CoolProp>=8,<9", "scipy>=1.17,<2", "asyncua>=2.1,<3", "cryptography>=50,<51"]
 healthcare = ["scipy>=1.17,<2", "numpy>=2,<3", "httpx>=0.28,<1", "jsonschema>=4.25,<5"]
 multimodal = ["numpy>=2,<3", "scipy>=1.17,<2"]
