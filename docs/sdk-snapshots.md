@@ -1,28 +1,27 @@
 # SDK versions and reproducibility
 
-The lab pins official, unmodified EigenScope SDK **0.2.8** archives in hash-named snapshots. Each snapshot preserves the upstream bytes and includes its origin, license declaration, Apache-2.0 license text and SHA-256 manifest. The [EigenScope registry](https://eigenscope.guardianai.network/registry) remains the upstream package source.
+The lab pins official, unmodified Python, TypeScript and Wasm SDK **0.2.12** archives in hash-named snapshots. Each snapshot includes its upstream origin, license declaration, Apache-2.0 license text and checksums. The [EigenScope registry](https://eigenscope.guardianai.network/registry) remains the upstream package source.
 
-The **52,185-byte [Python wheel](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.8-c313c97a/eigenscope_sdk-0.2.8-py3-none-any.whl)** is preserved in the [Python snapshot release](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-python-0.2.8-c313c97a) with this SHA-256:
+| Package | Archive size | Snapshot |
+| --- | ---: | --- |
+| Python `eigenscope-sdk` | 50,327 bytes | [Python 0.2.12](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-python-0.2.12-60693e24) |
+| TypeScript `@eigenscope/sdk` | 118,569 bytes | [TypeScript 0.2.12](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.12-260f86e6) |
+| Wasm `@eigenscope/orthocore-wasm` | 58,284 bytes | [Wasm 0.2.12](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-wasm-0.2.12-5f88cdec) |
 
-```text
-c313c97a64e8d1a2e56fb32e71001991bad90861aa3859bf740d66b1c1cc7c0a
-```
-
-`pyproject.toml` and `uv.lock` identify the archive and enforce its integrity. SDK 0.2.8 includes `eigenscope_sdk.connect_model`, the official `eigenscope_sdk.lab_connector:connect` adapter used by the [model integration guide](model-integration.md), multimodal decomposition/rehydration helpers (`decompose_audio`, `decompose_image`, `decompose_video`, `rehydrate_media`), and domain presets (`HEALTHCARE_CLINICAL_PHI`, `OIL_GAS_PRODUCTION_OPS`). Model inference and its protected runtime use the separate environment described there.
-
-The **122,437-byte [TypeScript tarball](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-typescript-0.2.8-b00813e9/eigenscope-sdk-0.2.8.tgz)** is preserved in the [TypeScript snapshot release](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.8-b00813e9) with this SHA-256:
+SHA-256 identities:
 
 ```text
-b00813e9ed5e8717fc2aa2fce228c8e6364517fd44ad8ff8c89fe104807a2c31
+60693e24ec67b59409a372a0de8edd90ebf8c452c927a2f4e0dc9e585f5655b7  eigenscope_sdk-0.2.12-py3-none-any.whl
+260f86e62f084c3b497d8c97fca16081184a5d81aa897c3daac911780d854d44  eigenscope-sdk-0.2.12.tgz
+5f88cdecd3f2a8c078992b476260143fd987d07d7f13a39f94009f64f2700ae5  eigenscope-orthocore-wasm-0.2.12.tgz
 ```
 
-`typescript/package-lock.json` also enforces its complete SHA-512 integrity value:
-
-```text
-sha512-G4gy08KhZdUzbPepBaX42o2AcoY7pspS3+NETxjOWZZaQIE7Fa0D5aT3yF96cngXZf/5tmcNwWzHLv2XgH6Ilg==
-```
+`pyproject.toml` and `uv.lock` identify the Python archive and enforce its complete SHA-256. `typescript/package.json` and `typescript/package-lock.json` identify both npm archives and enforce their complete SHA-512 integrity values. SDK 0.2.12 provides `eigenscope_sdk.connect_model`, the `eigenscope_sdk.lab_connector:connect` adapter, multimodal decomposition/rehydration helpers and the domain policy presets. Model inference uses the separate environment in the [model integration guide](model-integration.md).
 
 Earlier snapshots remain documented for reproducing prior runs:
+
+- [Python SDK 0.2.8 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-python-0.2.8-c313c97a)
+- [TypeScript SDK 0.2.8 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.8-b00813e9)
 
 - [Python SDK 0.2.7 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-python-0.2.7-96b307ab)
 - [TypeScript SDK 0.2.7 snapshot](https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/tag/sdk-typescript-0.2.7-000de10c)

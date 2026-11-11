@@ -23,12 +23,12 @@ The engine smoke command runs genuine small GPT-2 and Llama models initialized l
 
 ## Install the official SDK and prepare the protected runtime
 
-SDK **0.2.5** ships both `eigenscope_sdk.connect_model` and the lab adapter
+SDK **0.2.12** ships both `eigenscope_sdk.connect_model` and the lab adapter
 `eigenscope_sdk.lab_connector:connect`. Install its immutable official wheel:
 
 ```sh
 uv pip install --python .venv-models/bin/python \
-  'https://eigenscope.guardianai.network/pypi/packages/eigenscope_sdk-0.2.5-py3-none-any.whl#sha256=ac5485b605244ba513e0e99c9f7b2eb04f5499e7c08ff505803cc8afdf14d061'
+  'https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl#sha256=60693e24ec67b59409a372a0de8edd90ebf8c452c927a2f4e0dc9e585f5655b7'
 ```
 
 The deployment operator prepares the authorized Linux model environment once.

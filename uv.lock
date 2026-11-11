@@ -555,7 +555,7 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'oil-gas'", specifier = ">=50,<51" },
     { name = "cryptography", marker = "extra == 'tools'", specifier = ">=50,<51" },
     { name = "eigenscope-integration-lab", extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas", "healthcare", "multimodal", "rag"], marker = "extra == 'all'" },
-    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.8-c313c97a/eigenscope_sdk-0.2.8-py3-none-any.whl" },
+    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl" },
     { name = "httpx", marker = "extra == 'healthcare'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'provider'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'rag'", specifier = ">=0.28,<1" },
@@ -587,10 +587,10 @@ dev = [
 
 [[package]]
 name = "eigenscope-sdk"
-version = "0.2.8"
-source = { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.8-c313c97a/eigenscope_sdk-0.2.8-py3-none-any.whl" }
+version = "0.2.12"
+source = { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl" }
 wheels = [
-    { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.8-c313c97a/eigenscope_sdk-0.2.8-py3-none-any.whl", hash = "sha256:c313c97a64e8d1a2e56fb32e71001991bad90861aa3859bf740d66b1c1cc7c0a" },
+    { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl", hash = "sha256:60693e24ec67b59409a372a0de8edd90ebf8c452c927a2f4e0dc9e585f5655b7" },
 ]
 
 [package.metadata]
