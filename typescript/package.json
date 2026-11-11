@@ -21,7 +21,7 @@
     "@eigenscope/orthocore-wasm": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-wasm-0.2.12-5f88cdec/eigenscope-orthocore-wasm-0.2.12.tgz"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "prettier": "^3.9.10",
     "typescript": "^5.9.3"
   }
