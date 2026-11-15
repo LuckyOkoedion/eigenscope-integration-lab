@@ -85,13 +85,25 @@ class ObservedTransport:
                     chunks.extend(chunk)
                 remaining_seconds()
                 raw = bytes(chunks)
-        if path == "/v1/decompose" and status == 200:
+        if status == 200 and path in {
+            "/v1/decompose",
+            "/v1/decompose/audio",
+            "/v1/decompose/image",
+            "/v1/decompose/video",
+            "/v1/rag/ingest",
+            "/v1/rag/retrieve",
+            "/v1/rag/evaluate",
+        }:
             try:
                 value = json.loads(raw)
             except (ValueError, UnicodeDecodeError):
                 value = None
             if isinstance(value, dict):
                 ticket = value.get("vault_ticket")
+                if not isinstance(ticket, str):
+                    att = value.get("attestation")
+                    if isinstance(att, dict):
+                        ticket = att.get("vault_ticket")
                 if isinstance(ticket, str) and ticket.startswith("vlt_") and len(ticket) <= 512:
                     self.owned_tickets.add(ticket)
         # Identity, schema, policy, telemetry and custody validation remain with

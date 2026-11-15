@@ -297,3 +297,40 @@ def test_only_successful_own_decomposition_can_add_an_owned_handle(path, status)
         assert transport.owned_tickets == set()
     finally:
         transport.close()
+
+
+@pytest.mark.parametrize(
+    ("path", "payload", "expected"),
+    [
+        ("/v1/decompose/audio", {"vault_ticket": "vlt_audio_synthetic"}, {"vlt_audio_synthetic"}),
+        ("/v1/decompose/image", {"vault_ticket": "vlt_image_synthetic"}, {"vlt_image_synthetic"}),
+        ("/v1/decompose/video", {"vault_ticket": "vlt_video_synthetic"}, {"vlt_video_synthetic"}),
+        (
+            "/v1/rag/ingest",
+            {"attestation": {"vault_ticket": "vlt_rag_ingest_synthetic"}},
+            {"vlt_rag_ingest_synthetic"},
+        ),
+        (
+            "/v1/rag/retrieve",
+            {"attestation": {"vault_ticket": "vlt_rag_retrieve_synthetic"}},
+            {"vlt_rag_retrieve_synthetic"},
+        ),
+        (
+            "/v1/rag/evaluate",
+            {"attestation": {"vault_ticket": "vlt_rag_evaluate_synthetic"}},
+            {"vlt_rag_evaluate_synthetic"},
+        ),
+    ],
+)
+def test_observed_transport_records_media_and_rag_ticket_handles(path, payload, expected):
+    transport = ObservedTransport(
+        base_url="https://fixture.example.invalid",
+        timeout_seconds=1,
+        owned_tickets=set(),
+        delegate=lambda *_args: (200, json.dumps(payload).encode()),
+    )
+    try:
+        transport(path, {}, b"{}")
+        assert transport.owned_tickets == expected
+    finally:
+        transport.close()

@@ -179,11 +179,13 @@ def run_rag_live_http(
     started = time.perf_counter()
 
     def headers(req_id: str) -> dict[str, str]:
+        sdk_ver = distribution_version("eigenscope-sdk")
+        user_agent = f"EigenScope-SDK/{sdk_ver}" if sdk_ver else "EigenScope-SDK"
         return {
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "EigenScope-SDK/0.2.7",
+            "User-Agent": user_agent,
             "X-OrthoCore-Contract-Version": CONTRACT_VERSION,
             "X-OrthoCore-Request-Id": req_id,
             "X-OrthoCore-Idempotency-Key": f"rag.{req_id}",
@@ -578,8 +580,18 @@ def run_rag_live_sdk(
                         client.scrub(ticket)
                         row["checks"].append(_check("owned_rag_ticket_cleanup", True))
                     except Exception as exc:
+                        detail = safe_error(exc)
+                        proven_gone = detail.get("http_status") == 410 and (
+                            detail.get("error_code") == "VAULT_TICKET_SCRUBBED"
+                            or detail.get("reason_code")
+                            in {"TICKET_ALREADY_CONSUMED", "TICKET_ZEROIZED_OR_TTL_EXPIRED"}
+                        )
+                        if proven_gone:
+                            owned = getattr(client, "owned_tickets", None)
+                            if isinstance(owned, set):
+                                owned.discard(ticket)
                         row["checks"].append(
-                            _check("owned_rag_ticket_cleanup", False, **safe_error(exc))
+                            _check("owned_rag_ticket_cleanup", proven_gone, **detail)
                         )
     except Exception as exc:
         _record_exception(row, exc)

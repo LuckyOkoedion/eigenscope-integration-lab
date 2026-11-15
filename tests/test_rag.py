@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import pytest
 
+import eigenscope_lab.rag_live as rag_live
 from eigenscope_lab.live import ServiceResponseContractError
-from eigenscope_lab.rag_live import _validate_receipt_envelope, run_rag_live_http
-from eigenscope_lab.reporting import outcome
+from eigenscope_lab.rag_live import _validate_receipt_envelope, run_rag_live_http, run_rag_live_sdk
+from eigenscope_lab.reporting import distribution_version, outcome
 from eigenscope_lab.simulators.rag import (
     DEFAULT_SIR_THRESHOLD,
     SEED_PASSAGES,
@@ -122,6 +123,73 @@ def test_full_rag_scenario_emits_frames_and_passes_all_checks(rag_index):
     )
 
 
+def _make_sealed_rag_envelope(body, ticket):
+    return {
+        "schema_version": 1,
+        "body": {
+            **body,
+            "receipt_sha256": "sha256:" + "a" * 64,
+            "signature": "ed25519:" + "b" * 128,
+        },
+        "attestation": {
+            "receipt_sha256": "sha256:" + "a" * 64,
+            "signature": "ed25519:" + "b" * 128,
+            "single_use_enforced": True,
+            "vault_ticket": ticket,
+        },
+    }
+
+
+def _rag_retrieve_body():
+    return {
+        "candidate_pool_n": len(SEED_PASSAGES),
+        "sir_threshold": DEFAULT_SIR_THRESHOLD,
+        "admitted_context": [
+            {
+                "doc_id": "doc_6d0f",
+                "task_subspace_score": 0.9,
+                "sir_score": 0.1,
+            }
+        ],
+        "quarantined_candidates": [
+            {
+                "doc_id": "doc_47ac",
+                "sir_score": 0.8,
+                "reason": "sir_threshold_exceeded",
+            },
+            {
+                "doc_id": "doc_b953",
+                "sir_score": 0.7,
+                "reason": "sir_threshold_exceeded",
+            },
+        ],
+    }
+
+
+def _rag_evaluate_body():
+    return {
+        "documents": len(SEED_PASSAGES),
+        "queries": len(SEED_QUERIES),
+        "rows": [
+            {
+                "retriever": name,
+                "poison_target_exposure_pct": 0.0,
+                "full_query_exposure_pct": 0.0,
+                "partial_query_exposure_pct": 0.0,
+                "clean_ndcg_at_k": 1.0,
+            }
+            for name in (
+                "legacy_bm25",
+                "legacy_dense_bi_encoder",
+                "legacy_hybrid_rrf",
+                "lexical_overlap_filter_tau_0_95",
+                "mmr_diversity_rerank",
+                "orthocore_subspace_disentangled",
+            )
+        ],
+    }
+
+
 def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
     httpx = pytest.importorskip("httpx")
     ticket_counter = 0
@@ -130,20 +198,7 @@ def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
     def make_sealed(body):
         nonlocal ticket_counter
         ticket_counter += 1
-        return {
-            "schema_version": 1,
-            "body": {
-                **body,
-                "receipt_sha256": "sha256:" + "a" * 64,
-                "signature": "ed25519:" + "b" * 128,
-            },
-            "attestation": {
-                "receipt_sha256": "sha256:" + "a" * 64,
-                "signature": "ed25519:" + "b" * 128,
-                "single_use_enforced": True,
-                "vault_ticket": f"vlt_rag_test_{ticket_counter:04d}",
-            },
-        }
+        return _make_sealed_rag_envelope(body, f"vlt_rag_test_{ticket_counter:04d}")
 
     class FakeResp:
         def __init__(self, status_code, payload):
@@ -166,6 +221,9 @@ def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
         def post(self, url, *, headers, content):
             req = __import__("json").loads(content.decode("utf-8"))
             assert headers["Authorization"] == "Bearer synthetic-key"
+            sdk_ver = distribution_version("eigenscope-sdk")
+            expected_ua = f"EigenScope-SDK/{sdk_ver}" if sdk_ver else "EigenScope-SDK"
+            assert headers["User-Agent"] == expected_ua
             if url.endswith("/v1/vault/scrub"):
                 tkt = req["vault_ticket"]
                 if tkt in scrubbed_tickets:
@@ -198,61 +256,9 @@ def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
                     ),
                 )
             if url.endswith("/v1/rag/retrieve"):
-                return FakeResp(
-                    200,
-                    make_sealed(
-                        {
-                            "candidate_pool_n": len(SEED_PASSAGES),
-                            "sir_threshold": DEFAULT_SIR_THRESHOLD,
-                            "admitted_context": [
-                                {
-                                    "doc_id": "doc_6d0f",
-                                    "task_subspace_score": 0.9,
-                                    "sir_score": 0.1,
-                                }
-                            ],
-                            "quarantined_candidates": [
-                                {
-                                    "doc_id": "doc_47ac",
-                                    "sir_score": 0.8,
-                                    "reason": "sir_threshold_exceeded",
-                                },
-                                {
-                                    "doc_id": "doc_b953",
-                                    "sir_score": 0.7,
-                                    "reason": "sir_threshold_exceeded",
-                                },
-                            ],
-                        }
-                    ),
-                )
+                return FakeResp(200, make_sealed(_rag_retrieve_body()))
             assert url.endswith("/v1/rag/evaluate")
-            return FakeResp(
-                200,
-                make_sealed(
-                    {
-                        "documents": len(SEED_PASSAGES),
-                        "queries": len(SEED_QUERIES),
-                        "rows": [
-                            {
-                                "retriever": name,
-                                "poison_target_exposure_pct": 0.0,
-                                "full_query_exposure_pct": 0.0,
-                                "partial_query_exposure_pct": 0.0,
-                                "clean_ndcg_at_k": 1.0,
-                            }
-                            for name in (
-                                "legacy_bm25",
-                                "legacy_dense_bi_encoder",
-                                "legacy_hybrid_rrf",
-                                "lexical_overlap_filter_tau_0_95",
-                                "mmr_diversity_rerank",
-                                "orthocore_subspace_disentangled",
-                            )
-                        ],
-                    }
-                ),
-            )
+            return FakeResp(200, make_sealed(_rag_evaluate_body()))
 
     monkeypatch.setattr(httpx, "Client", FakeClient)
     row = run_rag_live_http(base_url="https://sdk.example.invalid", key="synthetic-key")
@@ -264,3 +270,41 @@ def test_live_rag_http_validates_receipt_fields_and_quarantine(monkeypatch):
     )
     with pytest.raises(ServiceResponseContractError):
         _validate_receipt_envelope({"schema_version": 1, "body": {}, "attestation": {}})
+
+
+def test_rag_live_sdk_cleanup_discards_already_scrubbed_410_tickets(monkeypatch):
+    sdk = pytest.importorskip("eigenscope_sdk")
+
+    class StubClient:
+        def __init__(self):
+            self.owned_tickets = {"vlt_rag_gone_410"}
+
+        def close(self):
+            return None
+
+        def rag_ingest(self, doc_id, _text, **_kwargs):
+            return _make_sealed_rag_envelope(
+                {"doc_id": doc_id, "auxiliary_metadata": {"sir_score": 0.12, "quarantined": False}},
+                "vlt_rag_ingest_gone_410",
+            )
+
+        def rag_retrieve(self, _query, **_kwargs):
+            return _make_sealed_rag_envelope(_rag_retrieve_body(), "vlt_rag_retrieve_gone_410")
+
+        def rag_evaluate(self, _documents, _queries, **_kwargs):
+            return _make_sealed_rag_envelope(_rag_evaluate_body(), "vlt_rag_eval_gone_410")
+
+        def scrub(self, _ticket):
+            raise sdk.EigenScopeError(
+                "SYNTHETIC_410",
+                http_status=410,
+                error_code="VAULT_TICKET_SCRUBBED",
+                reason_code="TICKET_ZEROIZED_OR_TTL_EXPIRED",
+            )
+
+    stub = StubClient()
+    monkeypatch.setattr(rag_live, "make_observed_client", lambda *_a, **_kw: stub)
+    row = run_rag_live_sdk(base_url="https://sdk.example.invalid", key="synthetic-key")
+    assert outcome(row) == "PASS", row
+    assert stub.owned_tickets == set()
+    assert any(c["name"] == "owned_rag_ticket_cleanup" and c["passed"] for c in row["checks"])
