@@ -107,3 +107,20 @@ def test_verify_reports_pass_when_gateway_opcua_and_mqtt_succeed(ignition_helper
     res = verify(timeout=5)
     assert res["status"] == "PASS"
     assert all(res["checks"].values())
+
+
+def test_execute_forwards_capture_output(ignition_helpers, monkeypatch):
+    execute = ignition_helpers["execute"]
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        captured["kwargs"] = kwargs
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    execute(["docker", "info"], timeout=15, capture=True, check=False)
+    assert captured["cmd"] == ["docker", "info"]
+    assert captured["kwargs"]["capture_output"] is True
+    assert "capture" not in captured["kwargs"]
+    assert captured["kwargs"]["check"] is False

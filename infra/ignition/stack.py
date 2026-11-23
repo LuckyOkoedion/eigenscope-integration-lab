@@ -44,7 +44,7 @@ def execute(
     check: bool = True,
 ) -> subprocess.CompletedProcess:
     return subprocess.run(
-        command, cwd=cwd, timeout=timeout, text=True, capture=capture, check=check
+        command, cwd=cwd, timeout=timeout, text=True, capture_output=capture, check=check
     )
 
 
