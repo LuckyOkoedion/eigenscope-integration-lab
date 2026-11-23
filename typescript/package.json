@@ -1,6 +1,6 @@
 {
   "name": "@eigenscope/integration-lab",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "TypeScript reference integration, multimodal HTTP client and SDK protocol-boundary tests",
