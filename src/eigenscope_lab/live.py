@@ -244,7 +244,7 @@ def _sdk_case(
             dec = client.decompose(
                 case.prompt, policy=DOMAIN_SEPARATION_POLICIES["LEGAL_CONTRACT_MA_ANALYTICS"]
             )
-        elif case.domain in {"tools", "rag"}:
+        elif case.domain in {"tools", "rag", "finance"}:
             dec = client.sanitize_tool_output(case.prompt)
         else:
             dec = client.decompose(case.prompt)
@@ -313,7 +313,15 @@ def _sdk_case(
             checks.append(_check("consumed_ticket_reuse_denied", False))
             consumed = False
         _checkpoint(check_cancelled)
-        if case.domain in {"robotics", "telecom", "oil-gas", "healthcare", "rag", "legal"}:
+        if case.domain in {
+            "robotics",
+            "telecom",
+            "oil-gas",
+            "healthcare",
+            "rag",
+            "legal",
+            "finance",
+        }:
             if case.domain == "robotics":
                 from .simulators.robotics import run_robotics
 
@@ -334,6 +342,10 @@ def _sdk_case(
                 from .simulators.legal import run_legal
 
                 external = run_legal(seed=seed, task_core=core, on_frame=on_frame)
+            elif case.domain == "finance":
+                from .simulators.finance import run_finance
+
+                external = run_finance(seed=seed, task_core=core, on_frame=on_frame)
             else:
                 from .simulators.oil_gas import run_oil_gas
 
@@ -563,7 +575,7 @@ def run_live(
         raise ValueError(
             "Unknown case; choose all, workbench, challenges, challenge-tasks, challenge-privacy, "
             "multimodal, multimodal-audio, multimodal-image, multimodal-video, "
-            "coding, tool-injection (or tools), telecom, robotics, oil-gas, healthcare, rag, legal, email or unicode"
+            "coding, tool-injection (or tools), telecom, robotics, oil-gas, healthcare, rag, legal, finance, email or unicode"
         )
     if case_id in multimodal_selections:
         from .multimodal_live import run_multimodal_live
@@ -1029,6 +1041,7 @@ def build_live_web_runners(
             "multimodal": run_live_multimodal_scenario,
             "rag": run_live_rag_scenario,
             "legal": make_domain_runner("legal"),
+            "finance": make_domain_runner("finance"),
             "provider": run_live_provider_scenario,
             "tools": run_live_tools_scenario,
             "coding": run_live_coding_scenario,

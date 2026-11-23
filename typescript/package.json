@@ -1,6 +1,6 @@
 {
   "name": "@eigenscope/integration-lab",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "TypeScript reference integration, multimodal HTTP client and SDK protocol-boundary tests",
@@ -17,8 +17,8 @@
     "format:check": "prettier --check . ../src/eigenscope_lab/assets/web"
   },
   "dependencies": {
-    "@eigenscope/sdk": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-typescript-0.2.12-260f86e6/eigenscope-sdk-0.2.12.tgz",
-    "@eigenscope/orthocore-wasm": "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-wasm-0.2.12-5f88cdec/eigenscope-orthocore-wasm-0.2.12.tgz"
+    "@eigenscope/sdk": "0.2.17",
+    "@eigenscope/orthocore-wasm": "0.2.17"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

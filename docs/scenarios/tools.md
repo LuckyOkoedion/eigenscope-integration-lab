@@ -33,3 +33,20 @@ The local suite verifies handshake/discovery, a successful tool result, the adve
 Cold SDK import is measured separately from the child-session I/O deadline. Results include parent import, child bootstrap and protocol-operation wall times. A cold two-CPU read-only VM measured about 12 seconds for the parent import and 17 seconds for the child handshake; the bounded 45-second session budget accommodates bootstrap without presenting it as request latency. Once a real industry MCP server is kept running, its startup and per-call latency should be measured separately. Windows checks retain a non-mutating process handle; numeric local HTTP binds avoid reverse-DNS delays.
 
 Sources: [official MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) (MIT), [v1 maintenance-line documentation](https://py.sdk.modelcontextprotocol.io/v1/) and the [MCP specification](https://modelcontextprotocol.io/specification). The tool implementation and sample data are included with the lab.
+
+## ServiceNow Scoped ITSM Work-Note Gate
+
+`run_tools()` also exercises a loopback HTTP ServiceNow Scoped ITSM boundary (`run_servicenow_itsm_contract()`, producing checks 9–10 of 10):
+
+- Accepts read-only incident work-note summaries returning `READ_ONLY_WORK_NOTE` with verified `vault_ticket_scrubbed` receipts.
+- Rejects state-changing or executable fields (`state: "Closed"`, `cmdb_ci_override`, `execute_script`) with HTTP `422`.
+
+## Production distribution clients
+
+Protect tool responses, ServiceNow tickets, and enterprise automation pipelines under `UNTRUSTED_TOOL_IPI_FIREWALL`:
+
+- **Product blueprint:** [EigenScope Tool-Result & MCP Firewall Guide](https://eigenscope.guardianai.network/guide/tool-results)
+- **Official `@eigenscope/mcp-server` (0.2.17) & n8n Workflow Kit:** [`tool-mcp-automation-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/tool-mcp-automation-kit.zip) (`npm i @eigenscope/mcp-server@0.2.17`)
+- **ServiceNow Scoped ITSM App, JetBrains IDE & MCP Registry `server.json` Kit:** [`jetbrains-servicenow-mcp-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/jetbrains-servicenow-mcp-kit.zip)
+- **Enterprise Java 17 & C# / .NET 8 SDKs:** [`enterprise-sdks-java-dotnet-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/enterprise-sdks-java-dotnet-kit.zip)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)

@@ -49,3 +49,12 @@ With an `on_frame` callback, the positive stream emits one observation after eac
 Usage values are deterministic UTF-8 byte counts used to exercise protocol metadata. They are not model tokenizer counts. Recorded wall time includes loopback transport, scripted fixture delays and any callback pacing; use the live lab's stage timings for EigenScope latency analysis. A completed local fixture validates transport behavior, not a hosted model's reasoning.
 
 Sources: [OpenAI streaming event reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/streaming-events), [official OpenAI Python client](https://github.com/openai/openai-python) (Apache-2.0), and Python's [HTTP server documentation](https://docs.python.org/3/library/http.server.html). The local provider implementation is included with the lab.
+
+## Production distribution clients
+
+Because EigenScope enforces strict `decompose -> customer provider call -> rehydrate -> scrub` ownership, your backend calls your chosen LLM provider directly using our typed client packages or serving gates:
+
+- **Model Platforms Serving & CI Kit (vLLM, Ray Serve, PyTorch CI):** [`model-platforms-serving-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/model-platforms-serving-kit.zip) · [Model Platforms Guide](https://eigenscope.guardianai.network/guide/model-platforms)
+- **Python & TypeScript / Wasm SDKs (0.2.17):** `pip install eigenscope-sdk==0.2.17` · `npm i @eigenscope/sdk@0.2.17 @eigenscope/orthocore-wasm@0.2.17` ([Package Registry](https://eigenscope.guardianai.network/registry))
+- **Enterprise Java 17 (Maven) & C# / .NET 8 (NuGet) SDKs:** [`enterprise-sdks-java-dotnet-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/enterprise-sdks-java-dotnet-kit.zip)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations)

@@ -21,6 +21,11 @@ def test_default_study_meets_declared_contract():
     result = run_telecom()
     assert all(check["passed"] for check in result["checks"]), result["checks"]
     assert result["engine_version"]
+    names = {c["name"] for c in result["checks"]}
+    assert {
+        "oran_camara_rapp_read_only_and_control_blocked",
+        "oran_camara_qod_subscriber_identifiers_absent",
+    } <= names
 
 
 @pytest.mark.parametrize("seed", [0, 7, 42, 2**32 - 1])

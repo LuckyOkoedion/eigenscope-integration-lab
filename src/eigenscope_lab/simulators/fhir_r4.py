@@ -28,7 +28,7 @@ def _validators() -> dict[str, Any]:
         kind: Draft6Validator(
             {"$ref": f"#/definitions/{kind}", "definitions": schema["definitions"]}
         )
-        for kind in ("Observation", "MedicationRequest", "OperationOutcome")
+        for kind in ("Observation", "MedicationRequest", "DocumentReference", "OperationOutcome")
     }
 
 

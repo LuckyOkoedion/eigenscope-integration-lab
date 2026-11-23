@@ -113,6 +113,11 @@ def test_task_core_clinical_directive_guard(text, accepted):
 def test_loopback_fhir_r4_contract_and_full_healthcare_suite(patient):
     fhir = run_fhir_r4_contract()
     assert all(check["passed"] is True for check in fhir["checks"])
+    names = {check["name"] for check in fhir["checks"]}
+    assert {
+        "smart_on_fhir_pkce_s256_launch_and_replay_denied",
+        "smart_on_fhir_document_reference_schema_and_auth_verified",
+    } <= names
 
     frames = []
     result = run_healthcare(

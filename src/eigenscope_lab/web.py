@@ -26,6 +26,7 @@ SCENARIOS = (
     "multimodal",
     "rag",
     "legal",
+    "finance",
     "provider",
     "tools",
     "coding",

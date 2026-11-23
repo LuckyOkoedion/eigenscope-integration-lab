@@ -18,5 +18,8 @@ Dependencies retain their upstream licenses. Most are downloaded from their orig
 | Open5GS / UERANSIM | Optional real 5G core and simulated RAN/UE topology | [Open5GS](https://github.com/open5gs/open5gs), [UERANSIM](https://github.com/aligungr/UERANSIM); see upstream licenses and [stack attribution](infra/telecom/) |
 | docker_open5gs | Optional upstream deployment configuration | [herlesupreeth/docker_open5gs](https://github.com/herlesupreeth/docker_open5gs); pinned checkout and upstream license retained by launcher |
 | MongoDB | Optional upstream core subscriber database | [MongoDB licensing](https://www.mongodb.com/legal/licensing/server-side-public-license), SSPL source-available dependency; independently licensed and not represented as OSI open source |
+| SQLite | In-memory SQL engine for Finance UDF batch scenario | Python standard library (`sqlite3`), Public Domain |
+| Inductive Automation Ignition | Optional isolated SCADA/OPC UA gateway (`infra/ignition/`) | [Inductive Automation](https://inductiveautomation.com/), commercial EULA requiring explicit `--accept-ignition-eula`; includes 2-hour resettable trial mode without a license key |
+| Eclipse Mosquitto | Optional isolated MQTT / Sparkplug B broker (`infra/ignition/`) | [eclipse-mosquitto](https://mosquitto.org/), EPL-2.0 / EDL-1.0 |
 
 The small warehouse robot model is original lab content. Its ROS2/Nav2-shaped interface is a documented adapter boundary; no ROS2 implementation is vendored. Generated software bills of materials and dependency-audit results should accompany release maintenance.

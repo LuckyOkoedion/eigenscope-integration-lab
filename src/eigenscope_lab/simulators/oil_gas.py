@@ -612,15 +612,21 @@ def run_oil_gas(
                 }
             )
         from eigenscope_lab.simulators.oil_gas_opcua import run_opcua_contract
+        from eigenscope_lab.simulators.oil_gas_sparkplug import run_sparkplug_uns_contract
 
         opcua = run_opcua_contract()
         checks.extend(
             {**check, "name": "opcua_" + check["name"], "passed": bool(check["passed"])}
             for check in opcua["checks"]
         )
+        sparkplug = run_sparkplug_uns_contract()
+        checks.extend(
+            {**check, "name": "sparkplug_" + check["name"], "passed": bool(check["passed"])}
+            for check in sparkplug["checks"]
+        )
         return {
             "suite": "oil-gas",
-            "engine": "CoolProp HEOS methane + SciPy DOP853 mass balance + asyncua OPC UA",
+            "engine": "CoolProp HEOS methane + SciPy DOP853 mass balance + asyncua OPC UA + MQTT Sparkplug B",
             "engine_version": {"CoolProp": coolprop.__version__, "SciPy": scipy.__version__},
             "seed": seed,
             "checks": checks,
@@ -636,6 +642,7 @@ def run_oil_gas(
                 "pacing_ms_per_frame": pacing_ms,
                 "stale_phase_uses_separate_receiver": True,
                 "opcua": opcua["metrics"],
+                "sparkplug_uns": sparkplug["metrics"],
             },
             "scope": "Synthetic isothermal pure-methane receiver. External heat reservoir assumed; no thermal dynamics or heating claim. Simplified commanded-flow compressor and ideal-gas nozzle outlet to a downstream process; no ambient vent, compressor map, pipeline network, plant calibration, or certified SIS/ESD. OPC UA is local test transport, not production authentication.",
         }

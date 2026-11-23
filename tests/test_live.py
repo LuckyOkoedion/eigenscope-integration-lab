@@ -622,6 +622,7 @@ def test_validate_live_credentials_and_web_runners_registry():
         "multimodal",
         "rag",
         "legal",
+        "finance",
         "provider",
         "tools",
         "coding",

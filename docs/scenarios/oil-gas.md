@@ -12,7 +12,7 @@ required.
 ```bash
 python -m pip install -e '.[oil-gas]'
 python -c 'import json; from eigenscope_lab.simulators.oil_gas import run_oil_gas; print(json.dumps(run_oil_gas(), indent=2))'
-python -m pytest tests/test_oil_gas.py tests/test_oil_gas_opcua.py
+python -m pytest tests/test_oil_gas.py tests/test_oil_gas_opcua.py tests/test_oil_gas_sparkplug.py
 ```
 
 The optional dependencies are real engines, not passing substitutes. Missing
@@ -218,3 +218,22 @@ instrument validation or plant operating procedures.
 CoolProp is MIT-licensed, SciPy uses BSD-3-Clause, and asyncua uses
 LGPL-3.0-or-later. They are installed dependencies under their upstream licenses.
 The receiver model and boundary tests are original repository code.
+
+## Sparkplug B UNS, Historian Contracts & Optional Ignition Stack
+
+After the OPC UA contract, `run_sparkplug_uns_contract()` executes an ephemeral loopback TCP **MQTT v3.1.1** broker on `127.0.0.1:0` and a loopback **AVEVA PI Web API / Cognite Data Fusion** HTTP gate:
+
+- Publishes and verifies Sparkplug B `DDATA` telemetry on `spBv1.0/LabPlant/DDATA/IgnitionEdge01/Compressor01` carrying numeric engineering units (`kPag`, `degC`, `MMSCFD`, `RPM`).
+- Rejects Sparkplug command topics (`NCMD`, `DCMD`), PLC/SIS write opcodes (`WRITE_COIL`, `BYPASS_SIS`, `MODBUS_FC06`, `OPCUA_WRITE`), and incomplete `READ_ONLY_PROPOSAL` schemas.
+- Exercises read-only historian reads (`GET /piwebapi/streams/lab-train-c04/value`), blocks historian writes (`405`), and verifies content-free Cognite CDF function receipts (`metrics.sparkplug_uns`).
+
+To point external SCADA tools against a live **Inductive Automation Ignition 8.1.48** trial gateway (with built-in Programmable Device Simulator) and **Eclipse Mosquitto 2.0.20** MQTT broker locally, follow the optional [Ignition + Mosquitto stack guide](../../infra/ignition/README.md).
+
+## Production distribution clients
+
+Once your local tests pass, deploy the production OT clients documented on [EigenScope Oil & Gas](https://eigenscope.guardianai.network/guide/oil-gas) and [Integrations](https://eigenscope.guardianai.network/integrations):
+
+- **Inductive Automation Ignition SCADA Module (`.modl`) & Sparkplug B UNS Filter:** [`ignition-scada-uns-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/ignition-scada-uns-kit.zip)
+- **Cognite Data Fusion (CDF) & AVEVA PI Vision ISV Connector:** [`industrial-historian-cdf-pi-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/industrial-historian-cdf-pi-kit.zip)
+- **Purdue Level 3.5 Air-Gapped OT DMZ Systemd & SIS Proposal Kit:** [`oil-gas-ot-dmz-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/oil-gas-ot-dmz-kit.zip)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)

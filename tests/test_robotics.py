@@ -121,6 +121,11 @@ def test_real_mujoco_motion_sensor_stop_and_contact_control():
     result = run_robotics(seed=7, on_frame=delivered.append)
     assert result["engine_version"]
     assert not [check for check in result["checks"] if not check["passed"]]
+    names = {c["name"] for c in result["checks"]}
+    assert {
+        "ros2_nim_active_when_attested",
+        "ros2_nim_safe_hold_on_health_503_or_gate_422",
+    } <= names
     assert result["metrics"]["clear_route"]["physics_steps"] == 2000
     assert result["metrics"]["clear_route"]["travelled_m"] > 1.0
     assert result["metrics"]["obstacle_stop"]["trace"]

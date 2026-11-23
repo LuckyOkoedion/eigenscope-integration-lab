@@ -469,7 +469,7 @@ wheels = [
 
 [[package]]
 name = "eigenscope-integration-lab"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 
 [package.optional-dependencies]
@@ -555,7 +555,7 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'oil-gas'", specifier = ">=50,<51" },
     { name = "cryptography", marker = "extra == 'tools'", specifier = ">=50,<51" },
     { name = "eigenscope-integration-lab", extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas", "healthcare", "multimodal", "rag"], marker = "extra == 'all'" },
-    { name = "eigenscope-sdk", marker = "extra == 'live'", url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl" },
+    { name = "eigenscope-sdk", marker = "extra == 'live'", specifier = "==0.2.17" },
     { name = "httpx", marker = "extra == 'healthcare'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'provider'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'rag'", specifier = ">=0.28,<1" },
@@ -587,18 +587,12 @@ dev = [
 
 [[package]]
 name = "eigenscope-sdk"
-version = "0.2.12"
-source = { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl" }
+version = "0.2.17"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/2c/7e43d373fe281b343a7ff7341219108f8925e2f5cd5954878e87585f217f/eigenscope_sdk-0.2.17.tar.gz", hash = "sha256:efe20a9686f827bd6b60722a8516474a0752fa6e3aba96e47ce2d291e374349c", size = 65460, upload-time = "2026-11-23T13:20:46.11Z" }
 wheels = [
-    { url = "https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl", hash = "sha256:60693e24ec67b59409a372a0de8edd90ebf8c452c927a2f4e0dc9e585f5655b7" },
+    { url = "https://files.pythonhosted.org/packages/cb/de/eb3ea391d8b9549b33f1074188adac91b7254fb43d13f71281cfec558245/eigenscope_sdk-0.2.17-py3-none-any.whl", hash = "sha256:60f5d9370cf7fae93eb5b67549b00c426d607a331032ef49fe7df06459f60faa", size = 69877, upload-time = "2026-11-23T13:20:45.26Z" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "torch", marker = "extra == 'model'", specifier = ">=2.6,<3" },
-    { name = "transformers", marker = "extra == 'model'", specifier = ">=4.51,<6" },
-]
-provides-extras = ["model"]
 
 [[package]]
 name = "etils"

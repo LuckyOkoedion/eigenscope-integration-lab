@@ -44,10 +44,17 @@ const definitions = {
   },
   legal: {
     title: "Legal & deal rooms",
-    engine: "Structured terms · Read-only action gate",
+    engine: "Structured terms · Read-only DMS & action gate",
     description:
-      "Compare indemnification, survival and governing law with source terms before releasing a deal-room summary.",
-    scope: "Synthetic agreement · Source comparison · Read-only authorization",
+      "Compare indemnification, survival and governing law with source terms and verify matter-scoped DMS isolation.",
+    scope: "Synthetic agreement · Loopback DMS contract · Read-only authorization",
+  },
+  finance: {
+    title: "Finance & data",
+    engine: "SQLite SQL UDF · Decimal ledger · External Access HTTP",
+    description:
+      "Execute SQL UDF row batching over a double-entry ledger, enforce single-use dual control, and emit content-free receipts.",
+    scope: "In-memory SQLite UDF · Exact Decimal balance · Loopback External Access gate",
   },
   provider: {
     title: "Model provider",
@@ -96,6 +103,310 @@ function actionTitle(name) {
   const title = definitions[name].title;
   return name === "rag" || name === "tools" ? title : title.toLowerCase();
 }
+const PRODUCTION_CLIENTS = {
+  robotics: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/robotics",
+    guideLabel: "Robotics guide",
+    items: [
+      {
+        tag: "Production Kit · ROS 2",
+        name: "ROS 2 Fleet & SROS2 Lifecycle Gate",
+        detail: "Humble/Jazzy LifecycleNode enforcing SAFE_HOLD on 503 health or 422 OCR blocks.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/robotics-ros2-fleet-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · NVIDIA",
+        name: "NVIDIA Isaac ROS / NIM Guardrail & Isaac Sim",
+        detail:
+          "Pre-reasoning guardrail outside NVIDIA NIM inference plus Isaac Sim Replicator guard.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/nvidia-isaac-nim-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+    ],
+  },
+  telecom: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/telecom",
+    guideLabel: "Telecom & 6G guide",
+    items: [
+      {
+        tag: "Production Kit · O-RAN rApp",
+        name: "O-RAN Non-RT RIC rApp (EIAP / SMO) & GSMA CAMARA",
+        detail:
+          "Non-RT RIC R1 fault/PM shield, GSMA CAMARA QoD filter and NVIDIA AI-RAN MEC values.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/telecom-oran-rapp-camara-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · OpenShift MEC",
+        name: "Telecom O-RAN MEC ArgoCD & Near-RT RIC xApp",
+        detail:
+          "ArgoCD + OpenShift Helm sidecar and subscriber CPNI boundary under TELECOM_6G_SEMANTIC_RAN.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/telecom-oran-mec-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Optional Local 5G Stack",
+        name: "Open5GS + UERANSIM Isolated Docker Lab",
+        detail:
+          "Test NGAP/NAS registration and GTP-U user-plane traffic locally via infra/telecom/stack.py.",
+        href: "https://github.com/LuckyOkoedion/eigenscope-integration-lab/blob/main/infra/telecom/README.md",
+        cta: "Setup instructions",
+      },
+    ],
+  },
+  "oil-gas": {
+    guideUrl: "https://eigenscope.guardianai.network/guide/oil-gas",
+    guideLabel: "Oil & Gas OT guide",
+    items: [
+      {
+        tag: "Production Kit · Ignition 8.1",
+        name: "Inductive Automation Ignition (.modl) & Sparkplug B UNS",
+        detail:
+          "Gateway module + Sparkplug B UNS filter preserving engineering units (kPag, degC).",
+        href: "https://eigenscope.guardianai.network/downloads/kits/ignition-scada-uns-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · Historians",
+        name: "Cognite Data Fusion (CDF) & AVEVA PI Vision ISV",
+        detail:
+          "Stateless CDF py311 Function and CSP-safe PI Vision custom symbol calling VPC sidecar.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/industrial-historian-cdf-pi-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · Purdue L3.5",
+        name: "Air-Gapped OT DMZ Systemd & SIS Proposal Kit",
+        detail:
+          "Offline SHA256SUMS installer, PI/OPC UA collector and fail-closed READ_ONLY_PROPOSAL gate.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/oil-gas-ot-dmz-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Optional Local SCADA Stack",
+        name: "Ignition 8.1 Trial Gateway + Mosquitto MQTT Lab",
+        detail:
+          "Spin up pinned Ignition OPC UA simulator and MQTT broker via infra/ignition/stack.py.",
+        href: "https://github.com/LuckyOkoedion/eigenscope-integration-lab/blob/main/infra/ignition/README.md",
+        cta: "Setup instructions",
+      },
+    ],
+  },
+  healthcare: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/healthcare",
+    guideLabel: "Healthcare guide",
+    items: [
+      {
+        tag: "Production Kit · SMART v2",
+        name: "SMART on FHIR EHR App (Epic & Oracle Health)",
+        detail: "OAuth2 PKCE S256 clinician launch app calling hospital HIPAA VPC sidecar safely.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/healthcare-smart-on-fhir-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · HIPAA VPC",
+        name: "Healthcare HIPAA VPC Helm, Terraform & Workers",
+        detail:
+          "Kubernetes Helm + AWS/Azure/GCP PrivateLink workers for FHIR R4, DICOM and ambient scribe.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/healthcare-vpc-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Browser Shield",
+        name: "Clinician Browser Privacy Shield Extension",
+        detail:
+          "Chrome, Edge, Firefox & Safari web extension for staff handling chart notes in HTTPS apps.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/browser-extension.zip",
+        cta: "Download kit (.zip)",
+      },
+    ],
+  },
+  finance: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/finance",
+    guideLabel: "Finance & Data guide",
+    items: [
+      {
+        tag: "Production Kit · Cloud Data",
+        name: "Snowflake External Access & Databricks Unity Catalog Kit",
+        detail:
+          "Snowflake SQL/Python UDFs, Databricks PySpark partition transform & SWIFT/IBAN gate.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/finance-banking-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · Java & .NET",
+        name: "Enterprise Java 17 (Maven) & C# / .NET 8 (NuGet) SDKs",
+        detail:
+          "Core banking & payment JVM/CLR clients enforcing decompose -> model -> rehydrate -> scrub.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/enterprise-sdks-java-dotnet-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Suite Add-ins",
+        name: "Microsoft 365 Unified & Google Workspace Add-ons",
+        detail:
+          "Excel, Outlook, Word, Sheets & Gmail privacy shield for analyst and treasury workflows.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/m365-unified-addin.zip",
+        cta: "Download M365 kit (.zip)",
+      },
+    ],
+  },
+  multimodal: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/healthcare",
+    guideLabel: "Multimodal & Clinical guide",
+    items: [
+      {
+        tag: "Production Kit · Media Workers",
+        name: "HIPAA VPC Audio, Image & Video Pipeline Kit",
+        detail:
+          "Reference workers for PCM16 WAV ambient audio, DICOM PNG imaging and /v1/rehydrate/media.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/healthcare-vpc-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "SDKs · Python & TS/Wasm",
+        name: "EigenScope SDKs (0.2.17) & Registry",
+        detail: "PyPI eigenscope-sdk==0.2.17 and npm @eigenscope/sdk with SHA-256 media helpers.",
+        href: "https://eigenscope.guardianai.network/registry",
+        cta: "Open registry",
+      },
+    ],
+  },
+  rag: {
+    guideUrl: "https://eigenscope.guardianai.network/rag",
+    guideLabel: "RAG defense guide",
+    items: [
+      {
+        tag: "Production Kit · RAG Gate",
+        name: "RAG Production Retrieval Defense Gate Kit",
+        detail:
+          "Volatile 300s memory-isolated index worker (/v1/rag/ingest & /v1/rag/retrieve) + Helm templates.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/rag-production-gate-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Productivity Add-ins",
+        name: "Google Workspace & Microsoft 365 Enterprise Add-ins",
+        detail:
+          "Protect source Docs, Sheets, Gmail and Word knowledge documents before retrieval workflows.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/google-workspace-addon.zip",
+        cta: "Download Google kit (.zip)",
+      },
+    ],
+  },
+  legal: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/legal",
+    guideLabel: "Legal & VDR guide",
+    items: [
+      {
+        tag: "Production Kit · Cloud DMS",
+        name: "iManage Work v2, NetDocuments & VDR Clean-Room Kit",
+        detail:
+          "Matter-scoped DMS connectors plus Intune/Chrome policies for Datasite & Intralinks VDRs.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/legal-imanage-netdocuments-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · Office & Docs",
+        name: "M365 Word / Unified Add-in & Legal Deal Room Kit",
+        detail:
+          "50-300 page OOXML contract batching inside Word alongside SharePoint/S3 clean-room workers.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/m365-unified-addin.zip",
+        cta: "Download M365 kit (.zip)",
+      },
+      {
+        tag: "Browser Shield",
+        name: "VDR Browser Extension (Chrome, Edge, Firefox & Safari)",
+        detail:
+          "Zero-config sidepanel shield for web VDR portals with Safari Xcode build & MDM policies.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/browser-extension.zip",
+        cta: "Download kit (.zip)",
+      },
+    ],
+  },
+  provider: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/model-platforms",
+    guideLabel: "Model platforms guide",
+    items: [
+      {
+        tag: "Production Kit · Serving & CI",
+        name: "vLLM, Ray Serve & PyTorch CI Promotion Kit",
+        detail: "Runtime connect_model(model) wiring, lease health checks and SB-SAE-100 notebook.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/model-platforms-serving-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · Java & .NET",
+        name: "Enterprise Java 17 (Maven) & C# / .NET 8 (NuGet) SDKs",
+        detail:
+          "Typed server SDKs for calling EigenScope around your own OpenAI/Anthropic/Bedrock clients.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/enterprise-sdks-java-dotnet-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Circuit Microscope",
+        name: "EigenScope Package Registry & Circuit Inspection",
+        detail:
+          "Compare protected activation projections and download Python/TypeScript/Wasm packages.",
+        href: "https://eigenscope.guardianai.network/integrations#model-connection",
+        cta: "Model setup",
+      },
+    ],
+  },
+  tools: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/tool-results",
+    guideLabel: "Tool-result defense guide",
+    items: [
+      {
+        tag: "Production Kit · MCP & n8n",
+        name: "@eigenscope/mcp-server (0.2.17) & n8n Workflow Kit",
+        detail:
+          "Official stdio/HTTP MCP runtime plus importable Webhook -> decompose -> model -> rehydrate flow.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/tool-mcp-automation-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "Production Kit · ITSM & IDEs",
+        name: "ServiceNow Scoped ITSM App, JetBrains & MCP Registry",
+        detail:
+          "Scoped Script Include + Business Rule for ticket work-notes and official MCP server.json.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/jetbrains-servicenow-mcp-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+    ],
+  },
+  coding: {
+    guideUrl: "https://eigenscope.guardianai.network/guide/coding",
+    guideLabel: "Coding agent guide",
+    items: [
+      {
+        tag: "IDE Plugin · Native",
+        name: "Antigravity IDE Firewall & @eigenscope/init Fleet Pack",
+        detail:
+          "Lifecycle hooks for Antigravity, Claude Code, Cursor, Codex CLI, GitHub Actions & Jamf/Intune.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/antigravity-plugin.zip",
+        cta: "Download plugin (.zip)",
+      },
+      {
+        tag: "IDE Plugin · VS Code & Pi",
+        name: "EigenScope for VS Code & @eigenscope/pi-firewall (0.2.17)",
+        detail:
+          "3-stage trace inspector and fail-closed Pi coding firewall published on VS Code & Open VSX.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/vscode-pi-extension.zip",
+        cta: "Download kit (.zip)",
+      },
+      {
+        tag: "IDE Plugin · JetBrains",
+        name: "JetBrains IntelliJ / PyCharm / GoLand & Enterprise Fleet",
+        detail:
+          "JVM 21 IntelliJ Platform 2024.3+ plugin plus Jamf/Intune zero-secret rollout pack.",
+        href: "https://eigenscope.guardianai.network/downloads/kits/jetbrains-servicenow-mcp-kit.zip",
+        cta: "Download kit (.zip)",
+      },
+    ],
+  },
+};
 const CHECK_LABELS = {
   counterparty_and_escrow_vaulted: "Counterparties, price and escrow references protected",
   commercial_terms_preserved: "Cap, survival window and governing law match the source",
@@ -149,6 +460,46 @@ const CHECK_LABELS = {
   live_v1_audio_authorized_multimodal_access: "Live audio access",
   live_v1_image_authorized_multimodal_access: "Live image access",
   live_v1_video_authorized_multimodal_access: "Live video access",
+  wire_iban_swift_and_account_vaulted: "Company, IBAN, SWIFT and account protected",
+  settlement_currency_window_and_bps_preserved:
+    "Currency (EUR), T+1 settlement, 15 bps and dual-control preserved",
+  double_entry_decimal_ledger_balanced:
+    "Exact Decimal double-entry ledger balanced (debits = credits)",
+  sqlite_udf_partition_batch_protected: "SQLite SQL UDF row batch executed across partitions",
+  external_access_audit_receipts_content_free:
+    "External Access audit receipts verified content-free",
+  dual_control_single_use_accepted_and_replay_denied:
+    "Single-use dual-control approval accepted once & replay blocked",
+  wire_disbursement_and_mutation_endpoints_blocked:
+    "Unauthorized wire execution & mutation endpoints denied",
+  adversarial_wire_redirect_rejected: "Adversarial wire-redirect instruction rejected",
+  provided_task_core_respects_finance_boundary:
+    "Outbound summary cleared financial dual-control gate",
+  sparkplug_mqtt_v311_sparkplug_ddata_roundtrip:
+    "MQTT v3.1.1 Sparkplug B DDATA telemetry round-trip",
+  sparkplug_ncmd_dcmd_and_write_opcodes_blocked:
+    "Sparkplug NCMD/DCMD topics & PLC/SIS write opcodes blocked",
+  sparkplug_engineering_units_and_readonly_proposal_enforced:
+    "Engineering units (kPag, degC, MMSCFD, RPM) & READ_ONLY_PROPOSAL verified",
+  sparkplug_historian_pi_cdf_readonly_contract_enforced:
+    "AVEVA PI / Cognite CDF read-only historian & content-free gate verified",
+  smart_on_fhir_pkce_s256_launch_and_replay_denied:
+    "SMART on FHIR v2 PKCE S256 launch accepted & code replay denied",
+  smart_on_fhir_document_reference_schema_and_auth_verified:
+    "HL7 FHIR R4 DocumentReference schema & Bearer auth verified",
+  dms_matter_scoped_read_and_cross_matter_denied:
+    "Matter-scoped DMS document read & cross-matter isolation enforced",
+  dms_writeback_denied_and_receipt_content_free:
+    "DMS write-back blocked & counsel receipt verified content-free",
+  oran_camara_rapp_read_only_and_control_blocked:
+    "O-RAN Non-RT RIC R1 rApp read-only gate blocked radio writes",
+  oran_camara_qod_subscriber_identifiers_absent:
+    "GSMA CAMARA QoD filter blocked raw subscriber IMSI/SUPI",
+  ros2_nim_active_when_attested: "ROS 2 / NVIDIA NIM pre-reasoning gate active when attested",
+  ros2_nim_safe_hold_on_health_503_or_gate_422:
+    "ROS 2 / NVIDIA NIM transitioned to SAFE_HOLD on 503 health / 422 block",
+  servicenow_worknote_read_only_gate: "ServiceNow Scoped ITSM read-only work-note gate verified",
+  servicenow_mutation_fields_rejected: "ServiceNow ticket state & script mutation fields denied",
 };
 function sentenceCase(value) {
   const plain = words(value).trim();
@@ -376,6 +727,8 @@ function updateMetrics() {
       "Are sensitive audio/visual spans masked cleanly and restored byte-for-byte via SHA-256?",
     rag: "Does the SIR gate quarantine query-poisoned passages before synthesis while preserving clean nDCG@5?",
     legal: "Are the actual deal terms preserved, and are payment or waiver actions denied?",
+    finance:
+      "Does the SQL UDF batch preserve EUR/T+1 constraints with balanced ledgers, dual control and content-free receipts?",
     provider: "When does useful content arrive, and does the stream finish or stop correctly?",
     tools:
       "Which tool actions were permitted, which were denied, and where did untrusted data enter?",
@@ -390,6 +743,7 @@ function updateMetrics() {
     multimodal: "Media containers, span masking and SHA-256 round-trip",
     rag: "Subspace Incongruity Ratio (SIR) gate, retrieval ranking & nDCG@5",
     legal: "Source terms, observed terms and permitted actions",
+    finance: "SQL UDF batch protection, Decimal ledger & dual-control gate",
     provider: "Content arrival and stream lifecycle",
     tools: "Tool access and trust boundaries",
     coding: "Change, test and workspace isolation",
@@ -587,6 +941,31 @@ function updateMetrics() {
         "Read-only review authorization",
       ],
     ]);
+  } else if (selected === "finance") {
+    const debits = ((frame.debits_cents ?? 0) / 100).toFixed(2);
+    const credits = ((frame.credits_cents ?? 0) / 100).toFixed(2);
+    metrics([
+      [
+        "Double-entry ledger",
+        frame.ledger_balanced === true ? "Balanced (0 diff)" : "Needs review",
+        `${debits} debit · ${credits} credit`,
+      ],
+      [
+        "SQL UDF batch",
+        `${frame.rows_processed ?? 0} / ${frame.total_rows ?? 4} rows`,
+        "Loopback External Access UDF",
+      ],
+      [
+        "Dual-control gate",
+        frame.dual_control_enforced === true ? "Enforced" : "Awaiting check",
+        `${frame.rejected_mutations ?? 0} unauthorized requests denied`,
+      ],
+      [
+        "Audit receipts",
+        frame.audit_receipts_content_free === true ? "Content-free" : "Needs review",
+        "Zero raw IBAN / SWIFT / account literals",
+      ],
+    ]);
   } else if (selected === "provider" && providerLatest) {
     const first = providerTimeline.find((sample) => sample.event_type === "content");
     const finish = providerTimeline.find((sample) => sample.event_type === "finish");
@@ -674,6 +1053,37 @@ function updateMetrics() {
     ]);
   }
 }
+function updateProductionClients() {
+  const catalog = PRODUCTION_CLIENTS[selected];
+  const guideLink = $("client-guide-link");
+  if (guideLink && catalog) {
+    guideLink.setAttribute("href", catalog.guideUrl);
+    guideLink.textContent = `${catalog.guideLabel} ↗`;
+  }
+  const container = $("client-cards");
+  if (!container) return;
+  container.replaceChildren(
+    ...(catalog ? catalog.items : []).map((item) => {
+      const card = document.createElement("li");
+      card.className = "client-card";
+      const tag = document.createElement("span");
+      tag.className = "client-tag";
+      tag.textContent = item.tag;
+      const title = document.createElement("strong");
+      title.textContent = item.name;
+      const detail = document.createElement("p");
+      detail.textContent = item.detail;
+      const link = document.createElement("a");
+      link.className = "client-action";
+      link.setAttribute("href", item.href);
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+      link.textContent = `${item.cta} ↗`;
+      card.append(tag, title, detail, link);
+      return card;
+    }),
+  );
+}
 function resetProvider() {
   providerLatest = null;
   providerTimeline = [];
@@ -734,6 +1144,7 @@ function selectScenario(name) {
     showError("");
   }
   updateMetrics();
+  updateProductionClients();
   requestDraw();
 }
 function applyFrame(payload) {
@@ -780,6 +1191,7 @@ function applyFrame(payload) {
         : words(frame.phase || "Engine running");
   $("telemetry").textContent = JSON.stringify(frame, null, 2);
   updateMetrics();
+  updateProductionClients();
   requestDraw();
 }
 function renderState(next, { reset = false, revision = next.event_id } = {}) {
@@ -922,6 +1334,7 @@ function renderState(next, { reset = false, revision = next.event_id } = {}) {
       }),
     );
   updateMetrics();
+  updateProductionClients();
   requestDraw();
 }
 async function action(path, body) {
@@ -1061,7 +1474,7 @@ function draw() {
   if (selected === "legal") return;
   const compact = canvas.clientWidth < 650;
   const desiredWidth = compact ? 640 : 1080;
-  const workflow = selected === "tools" || selected === "coding";
+  const workflow = selected === "tools" || selected === "coding" || selected === "finance";
   const desiredHeight = compact ? 440 : workflow ? 340 : 500;
   if (canvas.width !== desiredWidth || canvas.height !== desiredHeight) {
     canvas.width = desiredWidth;
@@ -1103,6 +1516,10 @@ function draw() {
   }
   if (selected === "rag") {
     drawRag(compact);
+    return;
+  }
+  if (selected === "finance") {
+    drawFinance(compact);
     return;
   }
   if (selected === "tools" || selected === "coding") {
@@ -1640,6 +2057,82 @@ function drawRag(compact) {
   canvas.setAttribute(
     "aria-label",
     `RAG defense ${words(frame.phase)}, ${frame.searchable_count ?? 0} admitted passages, ${frame.quarantined_count ?? 0} quarantined passages, clean nDCG ${number(frame.orthocore_ndcg, 4)}.`,
+  );
+}
+function drawFinance(compact) {
+  const ink = color("--ink"),
+    muted = color("--muted"),
+    accent = color("--accent");
+  const stages = [
+    [
+      "Vault & Constraints",
+      ["wire_iban_swift_and_account_vaulted", "settlement_currency_window_and_bps_preserved"],
+      "EUR · T+1 · 15 bps",
+    ],
+    [
+      "SQL UDF Batch",
+      ["double_entry_decimal_ledger_balanced", "sqlite_udf_partition_batch_protected"],
+      `${frame.rows_processed ?? 4} rows protected`,
+    ],
+    [
+      "Dual-Control Gate",
+      [
+        "external_access_audit_receipts_content_free",
+        "dual_control_single_use_accepted_and_replay_denied",
+      ],
+      "Single-use sign-off",
+    ],
+    [
+      "Block Wire Redirects",
+      ["wire_disbursement_and_mutation_endpoints_blocked", "adversarial_wire_redirect_rejected"],
+      "Read-only review",
+    ],
+  ];
+  text("FINANCE & CLOUD DATA · SQL UDF & DUAL-CONTROL BOUNDARY", 28, 40, compact ? 20 : 22, ink);
+  if (compact) {
+    stages.forEach(([label, names, note], i) => {
+      const checks = names.map(observedCheck),
+        ready = checks.every(Boolean),
+        passed = ready && checks.every((c) => c.passed === true);
+      const y = 106 + i * 82,
+        stroke = ready ? (passed ? accent : color("--danger")) : color("--line");
+      if (i) line(52, y - 60, 52, y - 23, color("--line"), 3);
+      circle(52, y, 19, ready ? color("--accent-soft") : color("--surface"), stroke);
+      text(ready ? (passed ? "✓" : "×") : String(i + 1), 52, y + 8, 23, stroke, "center");
+      text(label, 90, y - 2, 26, ink);
+      text(ready ? note : "Awaiting observation", 90, y + 28, 20, muted);
+    });
+  } else {
+    stages.forEach(([label, names, note], i) => {
+      const checks = names.map(observedCheck),
+        ready = checks.every(Boolean),
+        passed = ready && checks.every((c) => c.passed === true);
+      const x = 40 + i * 260,
+        stroke = ready ? (passed ? accent : color("--danger")) : color("--line");
+      ctx.fillStyle = color("--surface");
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, 90, 230, 115, 14);
+      ctx.fill();
+      ctx.stroke();
+      text(String(i + 1), x + 20, 119, 20, stroke);
+      text(label, x + 20, 157, 21, ink);
+      text(ready ? (passed ? "Verified" : "Needs attention") : "Awaiting", x + 20, 190, 18, stroke);
+      text(note, x + 20, 235, 14, muted);
+      if (i < 3) line(x + 232, 160, x + 255, 160, color("--line"), 3);
+    });
+    text(
+      `Decimal ledger balanced: ${frame.ledger_balanced === true ? "yes" : "checking"} · Content-free receipts: ${frame.audit_receipts_content_free === true ? "confirmed" : "pending"}`,
+      40,
+      290,
+      18,
+      accent,
+    );
+  }
+  canvas.setAttribute(
+    "aria-label",
+    `Finance and data ${words(frame.phase)}, ${frame.rows_processed ?? 0} rows protected, ledger balanced ${Boolean(frame.ledger_balanced)}.`,
   );
 }
 function drawCompact() {

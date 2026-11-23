@@ -8,6 +8,7 @@ engineering model, not clinical decision support or a medical device.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import math
@@ -21,7 +22,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from .fhir_r4 import validate_fhir_r4_resource
 
@@ -559,7 +560,7 @@ class _FHIRServer(ThreadingHTTPServer):
 
 
 def run_fhir_r4_contract() -> dict[str, Any]:
-    """Run an actual loopback HTTP HL7 FHIR R4 Observation + MedicationRequest gate."""
+    """Run loopback HTTP HL7 FHIR R4 Observation, MedicationRequest & SMART v2 PKCE gates."""
     _, _, _, httpx = _engine()
     approvals = LocalClinicianApprovals()
     now_h = 4.0
@@ -567,6 +568,23 @@ def run_fhir_r4_contract() -> dict[str, Any]:
         PUMP_CHANNEL_ID, "set_infusion_rate", 96.0, "mg/h", now_h, now_h + 1.0
     )
     token = approvals.issue(reviewed_order, now_h=now_h)
+    code_verifier = secrets.token_urlsafe(32)
+    code_challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode("ascii")).digest())
+        .decode("ascii")
+        .rstrip("=")
+    )
+    auth_code = secrets.token_urlsafe(16)
+    bearer_token = secrets.token_urlsafe(24)
+    smart_lock = threading.Lock()
+    smart_state: dict[str, Any] = {
+        "pending_codes": {auth_code: code_challenge},
+        "issued_tokens": set(),
+        "smart_tokens_issued": 0,
+        "smart_tokens_denied": 0,
+        "docref_served": 0,
+        "docref_denied": 0,
+    }
     state: dict[str, Any] = {"accepted_orders": 0, "denied_orders": 0}
 
     class Handler(BaseHTTPRequestHandler):
@@ -575,18 +593,77 @@ def run_fhir_r4_contract() -> dict[str, Any]:
         def log_message(self, *_args: Any) -> None:
             return
 
-        def _reply(self, status: int, body: dict[str, Any]) -> None:
-            validate_fhir_r4_resource(body)
+        def _reply_raw(self, status: int, body: dict[str, Any], content_type: str) -> None:
             raw = json.dumps(body, allow_nan=False).encode("utf-8")
             self.send_response(status)
-            self.send_header("Content-Type", "application/fhir+json; charset=utf-8")
+            self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(raw)))
             self.send_header("Connection", "close")
             self.end_headers()
+            self.close_connection = True
             self.wfile.write(raw)
+
+        def _reply(self, status: int, body: dict[str, Any]) -> None:
+            validate_fhir_r4_resource(body)
+            self._reply_raw(status, body, "application/fhir+json; charset=utf-8")
 
         def do_GET(self) -> None:  # noqa: N802
             path = urlsplit(self.path).path
+            if path == "/fhir/r4/.well-known/smart-configuration":
+                self._reply_raw(
+                    200,
+                    {
+                        "grant_types_supported": ["authorization_code"],
+                        "code_challenge_methods_supported": ["S256"],
+                        "capabilities": [
+                            "launch-ehr",
+                            "client-public",
+                            "permission-patient",
+                            "permission-v2",
+                        ],
+                    },
+                    "application/json; charset=utf-8",
+                )
+                return
+            if path == "/fhir/r4/DocumentReference/clinical-note-01":
+                auth = self.headers.get("Authorization", "")
+                presented = auth[7:] if auth.startswith("Bearer ") else ""
+                with smart_lock:
+                    authorized = bool(presented and presented in smart_state["issued_tokens"])
+                    if authorized:
+                        smart_state["docref_served"] += 1
+                    else:
+                        smart_state["docref_denied"] += 1
+                if not authorized:
+                    self._reply(
+                        401,
+                        {
+                            "resourceType": "OperationOutcome",
+                            "issue": [{"severity": "error", "code": "login"}],
+                        },
+                    )
+                    return
+                note_b64 = base64.b64encode(
+                    b"Trough 18 mg/L and clearance 4.2 L/h reviewed; pump ceiling 30 mg/L intact."
+                ).decode("ascii")
+                self._reply(
+                    200,
+                    {
+                        "resourceType": "DocumentReference",
+                        "id": "clinical-note-01",
+                        "status": "current",
+                        "subject": {"reference": _FHIR_PATIENT},
+                        "content": [
+                            {
+                                "attachment": {
+                                    "contentType": "text/plain",
+                                    "data": note_b64,
+                                }
+                            }
+                        ],
+                    },
+                )
+                return
             if path == "/fhir/r4/Observation/serum-drug-level":
                 self._reply(
                     200,
@@ -623,7 +700,57 @@ def run_fhir_r4_contract() -> dict[str, Any]:
             )
 
         def do_POST(self) -> None:  # noqa: N802
-            if urlsplit(self.path).path != "/fhir/r4/MedicationRequest":
+            path = urlsplit(self.path).path
+            if path == "/oauth/token":
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if not 0 < length <= 4096:
+                        raise ValueError("Invalid token request length")
+                    form = parse_qs(self.rfile.read(length).decode("utf-8"), strict_parsing=True)
+                    grant = form.get("grant_type", [""])[0]
+                    code = form.get("code", [""])[0]
+                    verifier = form.get("code_verifier", [""])[0]
+                    computed = (
+                        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest())
+                        .decode("ascii")
+                        .rstrip("=")
+                    )
+                    with smart_lock:
+                        expected_challenge = smart_state["pending_codes"].get(code)
+                        valid = (
+                            grant == "authorization_code"
+                            and expected_challenge is not None
+                            and secrets.compare_digest(computed, expected_challenge)
+                        )
+                        if valid:
+                            del smart_state["pending_codes"][code]
+                            smart_state["issued_tokens"].add(bearer_token)
+                            smart_state["smart_tokens_issued"] += 1
+                        else:
+                            smart_state["smart_tokens_denied"] += 1
+                    if not valid:
+                        self._reply_raw(
+                            400, {"error": "invalid_grant"}, "application/json; charset=utf-8"
+                        )
+                        return
+                    self._reply_raw(
+                        200,
+                        {
+                            "access_token": bearer_token,
+                            "token_type": "Bearer",
+                            "scope": "launch/patient patient/DocumentReference.read",
+                        },
+                        "application/json; charset=utf-8",
+                    )
+                    return
+                except (ValueError, UnicodeDecodeError):
+                    with smart_lock:
+                        smart_state["smart_tokens_denied"] += 1
+                    self._reply_raw(
+                        400, {"error": "invalid_request"}, "application/json; charset=utf-8"
+                    )
+                    return
+            if path != "/fhir/r4/MedicationRequest":
                 self._reply(
                     404,
                     {
@@ -700,6 +827,43 @@ def run_fhir_r4_contract() -> dict[str, Any]:
                 json=valid_body,
                 headers={"X-Clinician-Approval": token},
             )
+            # 5) SMART on FHIR App Launch v2 PKCE S256 & DocumentReference gate
+            smart_cfg = client.get(f"{base}/fhir/r4/.well-known/smart-configuration")
+            doc_unauth = client.get(f"{base}/fhir/r4/DocumentReference/clinical-note-01")
+            pkce_wrong = client.post(
+                f"{base}/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": auth_code,
+                    "code_verifier": "wrong-verifier",
+                },
+            )
+            pkce_ok = client.post(
+                f"{base}/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": auth_code,
+                    "code_verifier": code_verifier,
+                },
+            )
+            pkce_replay = client.post(
+                f"{base}/oauth/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": auth_code,
+                    "code_verifier": code_verifier,
+                },
+            )
+            access_tok = (
+                pkce_ok.json().get("access_token", "") if pkce_ok.status_code == 200 else ""
+            )
+            doc_auth = client.get(
+                f"{base}/fhir/r4/DocumentReference/clinical-note-01",
+                headers={"Authorization": f"Bearer {access_tok}"},
+            )
+            if doc_auth.status_code == 200:
+                validate_fhir_r4_resource(doc_auth.json())
+
         return {
             "checks": [
                 {
@@ -723,8 +887,35 @@ def run_fhir_r4_contract() -> dict[str, Any]:
                         and state["denied_orders"] == 3
                     ),
                 },
+                {
+                    "name": "smart_on_fhir_pkce_s256_launch_and_replay_denied",
+                    "passed": bool(
+                        smart_cfg.status_code == 200
+                        and "S256" in smart_cfg.json().get("code_challenge_methods_supported", [])
+                        and pkce_wrong.status_code == 400
+                        and pkce_ok.status_code == 200
+                        and pkce_replay.status_code == 400
+                        and smart_state["smart_tokens_issued"] == 1
+                        and smart_state["smart_tokens_denied"] == 2
+                    ),
+                },
+                {
+                    "name": "smart_on_fhir_document_reference_schema_and_auth_verified",
+                    "passed": bool(
+                        doc_unauth.status_code == 401
+                        and doc_auth.status_code == 200
+                        and doc_auth.json().get("resourceType") == "DocumentReference"
+                        and smart_state["docref_served"] == 1
+                        and smart_state["docref_denied"] == 1
+                    ),
+                },
             ],
-            "metrics": dict(state),
+            "metrics": {
+                **state,
+                "smart_tokens_issued": smart_state["smart_tokens_issued"],
+                "smart_tokens_denied": smart_state["smart_tokens_denied"],
+                "docref_served": smart_state["docref_served"],
+            },
         }
     finally:
         approvals.close()

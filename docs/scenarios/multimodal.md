@@ -66,3 +66,11 @@ export ORTHOCORE_BASE_URL=https://eigenscope.guardianai.network
 # Configure ORTHOCORE_API_KEY securely in your shell environment.
 uv run --frozen eigenscope-lab live --case multimodal --output results/multimodal-live.json
 ```
+
+## Production distribution clients
+
+Deploy multimodal decomposition and SHA-256 bit-exact restoration for clinical audio scribes, diagnostic DICOM PNG imaging, and facility video pipelines:
+
+- **Healthcare HIPAA VPC Helm, Terraform & Audio/Imaging Workers:** [`healthcare-vpc-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/healthcare-vpc-kit.zip) · [Healthcare Guide](https://eigenscope.guardianai.network/guide/healthcare)
+- **Official Python & TypeScript/Wasm SDKs (0.2.17):** [EigenScope Package Registry](https://eigenscope.guardianai.network/registry)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations)

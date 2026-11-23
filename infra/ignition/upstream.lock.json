@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "resolved_on": "2026-11-23",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "images": {
+    "ignition": "docker.io/inductiveautomation/ignition@sha256:f1d42324c69aa21a8ad3f4cbbe6d2dd10d436d3c3634bce8d4a7b6c5f33647d6",
+    "mosquitto": "docker.io/library/eclipse-mosquitto@sha256:21421af7b32bf9ce508e9090c8eb13bb81f410ca778dc205506180a6f862d0eb"
+  },
+  "versions": {
+    "ignition": "8.1.48",
+    "mosquitto": "2.0.20"
+  },
+  "licenses": {
+    "ignition": "Inductive Automation End User License Agreement (commercial runtime; includes 2-hour resettable trial mode without a license key)",
+    "mosquitto": "EPL-2.0 / EDL-1.0"
+  },
+  "trial_mode_note": "Launching Ignition requires explicit acceptance of Inductive Automation's EULA (--accept-ignition-eula). Unsigned third-party .modl dev testing additionally requires explicit --allow-unsigned-modules. Published host ports remain strictly bound to 127.0.0.1."
+}

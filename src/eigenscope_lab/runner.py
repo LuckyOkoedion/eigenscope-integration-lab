@@ -19,6 +19,7 @@ SCENARIOS = {
     "multimodal": ("multimodal", "run_multimodal", "multimodal"),
     "rag": ("rag", "run_rag", "rag"),
     "legal": ("legal", "run_legal", None),
+    "finance": ("finance", "run_finance", None),
 }
 
 

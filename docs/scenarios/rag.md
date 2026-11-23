@@ -91,3 +91,12 @@ HTTP endpoints with receipt-envelope consistency checks.
 - [Reciprocal rank fusion: Cormack, Clarke and Büttcher](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf).
 - [Maximal marginal relevance: Carbonell and Goldstein](https://www.cs.cmu.edu/afs/cs/Web/People/jgc/publication/MMR_DiversityBased_Reranking_SIGIR_1998.pdf).
 - [Graded cumulative-gain evaluation: Järvelin and Kekäläinen](https://researchportal.tuni.fi/en/publications/cumulated-gain-based-evaluation-of-ir-techniques).
+
+## Production distribution clients
+
+Deploy two-axis SIR + task-subspace RAG quarantine in production alongside document suite integrations:
+
+- **Product blueprint:** [EigenScope RAG Retrieval Defense](https://eigenscope.guardianai.network/rag)
+- **RAG Production Retrieval Defense Gate Kit (Helm + Worker):** [`rag-production-gate-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/rag-production-gate-kit.zip)
+- **Document Source Add-ins:** [`m365-unified-addin.zip`](https://eigenscope.guardianai.network/downloads/kits/m365-unified-addin.zip) and [`google-workspace-addon.zip`](https://eigenscope.guardianai.network/downloads/kits/google-workspace-addon.zip)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)

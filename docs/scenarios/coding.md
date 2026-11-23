@@ -32,3 +32,15 @@ Pair this scenario with EigenScope by protecting synthetic organization, credent
 The fixture executes actual Git operations and Python subprocess tests. The proposed patch is deterministic, so results do not claim an IDE integration or model reasoning benchmark.
 
 Sources: [Git worktree](https://git-scm.com/docs/git-worktree), [Git configuration](https://git-scm.com/docs/git-config), [Python unittest discovery](https://docs.python.org/3/library/unittest.html#test-discovery). Git remains a separately installed dependency under its upstream GPLv2 terms; no Git code is bundled.
+
+## Production distribution clients
+
+Roll out EigenScope across developer IDEs, coding agents, CI pipelines, and polyglot backend teams under `CODING_AGENT_FIREWALL`:
+
+- **Product blueprint:** [EigenScope Coding Agent Firewall Guide](https://eigenscope.guardianai.network/guide/coding)
+- **Antigravity IDE Native Firewall Plugin:** [`antigravity-plugin.zip`](https://eigenscope.guardianai.network/downloads/kits/antigravity-plugin.zip)
+- **VS Code & Pi Coding Agent (`@eigenscope/pi-firewall@0.2.17`):** [`vscode-pi-extension.zip`](https://eigenscope.guardianai.network/downloads/kits/vscode-pi-extension.zip) (also on VS Code Marketplace & Open VSX)
+- **Enterprise IDE Fleet & Jamf/Intune MDM Rollout Pack (`@eigenscope/init@0.2.17`):** [`ide-fleet-pack.zip`](https://eigenscope.guardianai.network/downloads/kits/ide-fleet-pack.zip) (Claude Code, Cursor, VS Code, Codex CLI, GitHub Actions, Jamf Pro, Intune)
+- **JetBrains (IntelliJ / PyCharm / GoLand), ServiceNow & MCP Registry Kit:** [`jetbrains-servicenow-mcp-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/jetbrains-servicenow-mcp-kit.zip)
+- **Enterprise Java 17 (Maven) & C# / .NET 8 (NuGet) SDKs:** [`enterprise-sdks-java-dotnet-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/enterprise-sdks-java-dotnet-kit.zip)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)

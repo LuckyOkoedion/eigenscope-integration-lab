@@ -132,3 +132,19 @@ not RF fidelity or E2AP/RIC interoperability.
 
 The lab does not relicense those projects. No upstream source or binary is
 vendored in the portable Python package.
+
+## O-RAN Non-RT RIC R1 rApp & GSMA CAMARA QoD Loopback Contract
+
+`run_telecom()` executes a loopback HTTP O-RAN R1 and CAMARA API boundary (`run_oran_camara_contract()`):
+
+- `POST /r1/fault-supervision/alarms` verifies read-only alarm/PM assurance summaries preserving `40 MHz` while blocking radio control-loop mutations (`E2_CONTROL_WRITE`, `RIC_CONTROL_REQUEST`, `422`).
+- `POST /camara/qod/v0/sessions/context` permits tokenized QoD context while blocking raw subscriber `IMSI-` / `SUPI-` identifiers (`422`).
+
+## Production distribution clients
+
+Deploy EigenScope across Tier-1 O-RAN RICs, CAMARA APIs, and 5G/6G MEC clusters under `TELECOM_6G_SEMANTIC_RAN`:
+
+- **Product blueprint:** [EigenScope 5G-Advanced & 6G Telecom Guide](https://eigenscope.guardianai.network/guide/telecom)
+- **O-RAN Non-RT RIC rApp (Ericsson EIAP / Nokia SMO), GSMA CAMARA & AI-RAN Kit:** [`telecom-oran-rapp-camara-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/telecom-oran-rapp-camara-kit.zip)
+- **Telecom O-RAN MEC OpenShift / ArgoCD CNF & Near-RT RIC xApp Kit:** [`telecom-oran-mec-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/telecom-oran-mec-kit.zip)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)

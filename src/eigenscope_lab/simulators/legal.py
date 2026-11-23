@@ -5,11 +5,17 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import socketserver
+import threading
 import time
+import urllib.error
+import urllib.request
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
+from urllib.parse import urlsplit
 
 SENSITIVE_DEAL_ENTITIES = ("Project Helios", "Meridian HoldCo", "$185,000,000", "99812044")
 
@@ -251,6 +257,143 @@ def evaluate_deal_room_clause(
     }
 
 
+class _DMSServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)
+        self.server_name = "localhost"
+        self.server_port = self.server_address[1]
+
+
+def run_dms_envelope_contract(
+    *,
+    source_terms: DealTerms = DEFAULT_TERMS,
+    sensitive_values: Sequence[str] = SENSITIVE_DEAL_ENTITIES,
+    terms_digest: str = "",
+) -> dict[str, Any]:
+    """Run loopback HTTP matter-scoped DMS & M365/Google Workspace batching contract."""
+    dm_state = {"authorized_reads": 0, "cross_matter_denied": 0, "writeback_denied": 0}
+    digest_value = terms_digest or ("sha256:" + hashlib.sha256(b"matter-2026-01").hexdigest())
+
+    class DMSHandler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, *_args: Any) -> None:
+            return
+
+        def _reply(self, status: int, body: dict[str, Any]) -> None:
+            raw = json.dumps(body, allow_nan=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            self.wfile.write(raw)
+
+        def do_GET(self) -> None:  # noqa: N802
+            path = urlsplit(self.path).path
+            if path == "/api/v2/matters/MATTER-2026-01/documents/SPA-8.4":
+                dm_state["authorized_reads"] += 1
+                self._reply(
+                    200,
+                    {
+                        "matter_id": "MATTER-2026-01",
+                        "document_id": "SPA-8.4",
+                        "paragraphs": [
+                            (
+                                f"Section 8.4 establishes a {source_terms.indemnification_cap_pct}% "
+                                f"indemnification cap and {source_terms.survival_months}-month survival window."
+                            ),
+                            f"Governed by the laws of {source_terms.governing_law}.",
+                        ],
+                        "counsel_receipt": {
+                            "schema_version": 1,
+                            "matter_id": "MATTER-2026-01",
+                            "policy_profile": "LEGAL_CONTRACT_MA_ANALYTICS",
+                            "terms_digest": digest_value,
+                            "vault_ticket_scrubbed": True,
+                        },
+                    },
+                )
+                return
+            if path.startswith("/api/v2/matters/"):
+                dm_state["cross_matter_denied"] += 1
+                self._reply(403, {"error_code": "MATTER_SCOPE_VIOLATION"})
+                return
+            self._reply(404, {"error_code": "NOT_FOUND"})
+
+        def do_POST(self) -> None:  # noqa: N802
+            dm_state["writeback_denied"] += 1
+            self._reply(405, {"error_code": "DMS_WRITEBACK_READ_ONLY"})
+
+    server = _DMSServer(("127.0.0.1", 0), DMSHandler)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    )
+    thread.start()
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with opener.open(
+            f"{base}/api/v2/matters/MATTER-2026-01/documents/SPA-8.4", timeout=5.0
+        ) as r:
+            read_ok_status = r.status
+            read_ok_body = json.loads(r.read().decode("utf-8"))
+        try:
+            with opener.open(
+                f"{base}/api/v2/matters/MATTER-OTHER/documents/SPA-8.4", timeout=5.0
+            ) as r:
+                cross_status = r.status
+        except urllib.error.HTTPError as err:
+            cross_status = err.code
+
+        write_req = urllib.request.Request(
+            f"{base}/api/v2/matters/MATTER-2026-01/documents/SPA-8.4",
+            data=json.dumps({"waive_cap": True}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with opener.open(write_req, timeout=5.0) as r:
+                write_status = r.status
+        except urllib.error.HTTPError as err:
+            write_status = err.code
+
+        receipt_str = json.dumps(read_ok_body.get("counsel_receipt", {})).casefold()
+        receipt_content_free = not any(val.casefold() in receipt_str for val in sensitive_values)
+        return {
+            "checks": [
+                {
+                    "name": "dms_matter_scoped_read_and_cross_matter_denied",
+                    "passed": bool(
+                        read_ok_status == 200
+                        and len(read_ok_body.get("paragraphs", [])) == 2
+                        and cross_status == 403
+                        and dm_state["authorized_reads"] == 1
+                        and dm_state["cross_matter_denied"] == 1
+                    ),
+                },
+                {
+                    "name": "dms_writeback_denied_and_receipt_content_free",
+                    "passed": bool(
+                        write_status == 405
+                        and dm_state["writeback_denied"] == 1
+                        and receipt_content_free
+                        and read_ok_body.get("counsel_receipt", {}).get("vault_ticket_scrubbed")
+                        is True
+                    ),
+                },
+            ],
+            "metrics": dm_state,
+        }
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def run_legal(
     seed: int = 7,
     task_core: str | None = None,
@@ -333,9 +476,14 @@ def run_legal(
         )["closing_checklist_digest"]
         == digest,
     )
+    dms = run_dms_envelope_contract(
+        source_terms=source_terms, sensitive_values=sensitive_values, terms_digest=digest
+    )
+    for chk in dms["checks"]:
+        record(chk["name"], chk["passed"])
     return {
         "suite": "legal",
-        "engine": "Structured commercial terms · Read-only action gate",
+        "engine": "Structured commercial terms · Read-only DMS & action gate",
         "seed": seed,
         "checks": checks,
         "metrics": {
@@ -343,10 +491,11 @@ def run_legal(
             "placeholder_count": len(re.findall(r"\[[A-Z][A-Z0-9_]{1,31}\]", clean_core)),
             **clean["observed_terms"],
             "matched_terms": sum(clean["term_matches"].values()),
+            "dms": dms["metrics"],
         },
         "source_terms": clean["source_terms"],
         "observed_terms": clean["observed_terms"],
         "term_matches": clean["term_matches"],
         "admitted": clean["admitted"],
-        "scope": "Synthetic Stock Purchase Agreement terms, source comparison and read-only tool authorization.",
+        "scope": "Synthetic Stock Purchase Agreement terms, source comparison, loopback DMS matter boundary and read-only tool authorization.",
     }

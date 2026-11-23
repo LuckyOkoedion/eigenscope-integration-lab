@@ -23,14 +23,16 @@ flowchart LR
 
 | Boundary | Executed here | Additional deployment needed |
 |---|---|---|
-| Robotics | Actual MuJoCo state integration, ray sensing, contacts and controller constraints | A robot's calibrated dynamics, ROS2 transport and physical safety validation |
-| Oil & Gas | CoolProp methane equation of state, SciPy receiver dynamics, independent shutdown and loopback OPC UA | Calibrated site/equipment model, operator identity and production transport security |
-| Healthcare | SciPy two-compartment IV PK mass balance, clinician sign-off and loopback HL7 FHIR R4 HTTP | Validated clinical PK/PD models, EHR authentication and medical-device governance |
+| Robotics | Actual MuJoCo state integration, ray sensing, contacts, controller constraints and loopback ROS 2 / NVIDIA NIM `SAFE_HOLD` gate | A robot's calibrated dynamics, ROS2 DDS runtime and physical safety validation |
+| Oil & Gas | CoolProp methane EOS, SciPy receiver dynamics, OPC UA SignAndEncrypt, loopback MQTT v3.1.1 Sparkplug B UNS & PI/CDF HTTP | Calibrated site/equipment model, Ignition Gateway/broker deployment (`infra/ignition/`) and certified SIS/ESD |
+| Healthcare | SciPy two-compartment IV PK mass balance, clinician sign-off, HL7 FHIR R4 HTTP and SMART on FHIR v2 PKCE / `DocumentReference` | Validated clinical PK/PD models, EHR authentication and medical-device governance |
+| Finance & data | In-memory SQLite SQL UDF row batching (`eigenscope_protect_row`), Decimal double-entry balance and loopback External Access dual-control HTTP | Production Snowflake/Databricks connectivity, bank payment controls and enterprise settlement rails |
+| Legal & deal rooms | Structured M&A terms extraction, read-only authorization and loopback matter-scoped DMS isolation | Live iManage/NetDocuments/VDR authentication and legal sign-off workflows |
 | Multimodal | Lossless PCM16 WAV, CRC-32 PNG and RGBA OCVC codecs, Parseval/STFT checks and SHA-256 restoration | Hosted or sidecar `/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media` runtime (`live --case multimodal`) |
-| Telecom fast scenario | Actual SimPy queue/resource simulation with seeded workload | Radio propagation/RF, actual E2AP/O-RAN controller and production scheduling |
+| Telecom fast scenario | Actual SimPy queue/resource simulation plus loopback O-RAN Non-RT RIC R1 rApp & GSMA CAMARA HTTP gate | Radio propagation/RF, live RIC deployment and production scheduling |
 | Telecom heavy profile | Pinned Open5GS core + UERANSIM RAN/UE when launched and verified | Suitable Linux container host, virtual-network capabilities; no physical RF |
 | Provider | Actual OpenAI HTTP/SSE client and deterministic local endpoint | Actual model behavior, provider-network latency and commercial credentials |
-| Tools | Actual official MCP stdio handshake and calls | A deployment's real tools, authorization and host configuration |
+| Tools | Actual official MCP stdio handshake/calls and ServiceNow Scoped ITSM work-note HTTP gate | A deployment's real tools, authorization and host configuration |
 | Coding | Actual Git worktree and executable checks in temporary directories | A deployment's repository, CI permissions and IDE/proxy integration |
 
 The lab never substitutes its own privacy engine for EigenScope. Protocol-wire fixtures in unit tests are explicitly synthetic and exercise client validation only.

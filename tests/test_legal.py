@@ -22,6 +22,11 @@ def evaluate(text):
 def test_observations_come_from_source_and_supplied_summary():
     result = run_legal(task_core=SUMMARY, source_terms=SOURCE, sensitive_values=())
     assert all(row["passed"] for row in result["checks"])
+    names = {row["name"] for row in result["checks"]}
+    assert {
+        "dms_matter_scoped_read_and_cross_matter_denied",
+        "dms_writeback_denied_and_receipt_content_free",
+    } <= names
     assert result["metrics"]["indemnification_cap_pct"] == 12.5
     assert result["metrics"]["survival_months"] == 24
     assert result["metrics"]["governing_law"] == "New York"

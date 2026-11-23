@@ -522,3 +522,60 @@ test("Legal is selectable and shows observed terms without replacing them with d
   assert.equal(app.get("legal-comparison").hidden, true);
   assert.equal(app.get("scene").hidden, false);
 });
+
+test("Finance is selectable and renders scenario-specific production distribution clients", () => {
+  const app = dashboard();
+  app.read('selectScenario("finance")');
+  assert.equal(app.get("title").textContent, "Finance & data");
+  assert.equal(app.get("start").textContent, "Run finance & data");
+  assert.equal(
+    app.get("client-guide-link").href,
+    "https://eigenscope.guardianai.network/guide/finance",
+  );
+  const clientLinks = app.get("client-cards").children.map((card) => card.children[3].href);
+  assert.ok(
+    clientLinks.includes(
+      "https://eigenscope.guardianai.network/downloads/kits/finance-banking-kit.zip",
+    ),
+  );
+  assert.ok(
+    clientLinks.includes(
+      "https://eigenscope.guardianai.network/downloads/kits/enterprise-sdks-java-dotnet-kit.zip",
+    ),
+  );
+
+  app.emit("snapshot", 1, {
+    ...snapshot("completed", 1, 1),
+    scenario: "finance",
+    frame: {
+      phase: "sql-udf-batch",
+      rows_processed: 4,
+      total_rows: 4,
+      debits_cents: 485_000_000,
+      credits_cents: 485_000_000,
+      ledger_balanced: true,
+      dual_control_enforced: true,
+      audit_receipts_content_free: true,
+      rejected_mutations: 3,
+      observed_checks: [{ name: "double_entry_decimal_ledger_balanced", passed: true }],
+    },
+  });
+  const cards = app.get("metrics").children;
+  assert.equal(cards[0].children[1].textContent, "Balanced (0 diff)");
+  assert.equal(cards[1].children[1].textContent, "4 / 4 rows");
+  assert.equal(cards[2].children[1].textContent, "Enforced");
+  assert.equal(cards[3].children[1].textContent, "Content-free");
+
+  app.read('selectScenario("oil-gas")');
+  const ogLinks = app.get("client-cards").children.map((card) => card.children[3].href);
+  assert.ok(
+    ogLinks.includes(
+      "https://eigenscope.guardianai.network/downloads/kits/ignition-scada-uns-kit.zip",
+    ),
+  );
+  assert.ok(
+    ogLinks.includes(
+      "https://github.com/LuckyOkoedion/eigenscope-integration-lab/blob/main/infra/ignition/README.md",
+    ),
+  );
+});

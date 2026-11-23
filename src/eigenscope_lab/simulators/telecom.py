@@ -7,14 +7,21 @@ deployment lives in ``infra/telecom`` and is a separate execution tier.
 
 from __future__ import annotations
 
+import json
 import math
 import random
 import re
+import socketserver
+import threading
+import urllib.error
+import urllib.request
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.metadata import version
 from typing import Any
+from urllib.parse import urlsplit
 
 # 3GPP TS 38.104 Table 5.3.2-1, FR1 channel bandwidth, 30 kHz SCS.
 PRBS_30KHZ = {
@@ -319,6 +326,129 @@ def simulate_ran(
     }
 
 
+class _ORANServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)
+        self.server_name = "localhost"
+        self.server_port = self.server_address[1]
+
+
+def run_oran_camara_contract() -> dict[str, Any]:
+    """Run loopback HTTP O-RAN R1 rApp (EIAP/SMO) & GSMA CAMARA QoD contracts."""
+    state = {"rapp_accepted": 0, "control_rejected": 0, "camara_accepted": 0, "camara_rejected": 0}
+
+    class ORANHandler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, *_args: Any) -> None:
+            return
+
+        def _reply(self, status: int, body: dict[str, Any]) -> None:
+            raw = json.dumps(body, allow_nan=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            self.wfile.write(raw)
+
+        def do_POST(self) -> None:  # noqa: N802
+            path = urlsplit(self.path).path
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length))
+            serialized = json.dumps(payload)
+            if path == "/r1/fault-supervision/alarms":
+                if any(op in serialized for op in ("E2_CONTROL_WRITE", "RIC_CONTROL_REQUEST")):
+                    state["control_rejected"] += 1
+                    self._reply(422, {"error_code": "RAN_CONTROL_LOOP_ISOLATED"})
+                    return
+                if "40 MHz" not in serialized:
+                    state["control_rejected"] += 1
+                    self._reply(422, {"error_code": "TASK_SUFFICIENCY_BELOW_FLOOR"})
+                    return
+                state["rapp_accepted"] += 1
+                self._reply(200, {"status": "R1_ALARM_ANALYZED", "mode": "READ_ONLY_ASSURANCE"})
+                return
+            if path == "/camara/qod/v0/sessions/context":
+                if any(ident in serialized for ident in ("SUPI-", "IMSI-")):
+                    state["camara_rejected"] += 1
+                    self._reply(422, {"error_code": "SUBSCRIBER_CPNI_LEAK_BLOCKED"})
+                    return
+                state["camara_accepted"] += 1
+                self._reply(200, {"status": "CAMARA_QOD_CONTEXT_ACCEPTED"})
+                return
+            self._reply(404, {"error_code": "NOT_FOUND"})
+
+    server = _ORANServer(("127.0.0.1", 0), ORANHandler)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    )
+    thread.start()
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+    def post(url: str, body: dict[str, Any]) -> int:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with opener.open(req, timeout=5.0) as r:
+                return r.status
+        except urllib.error.HTTPError as err:
+            return err.code
+
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        r1_ok = post(
+            f"{base}/r1/fault-supervision/alarms",
+            {"task_core": "Reallocate 40 MHz URLLC slice PRB congestion."},
+        )
+        r1_blocked = post(
+            f"{base}/r1/fault-supervision/alarms",
+            {"task_core": "Issue E2_CONTROL_WRITE and RIC_CONTROL_REQUEST for 40 MHz."},
+        )
+        cam_ok = post(
+            f"{base}/camara/qod/v0/sessions/context",
+            {"session": "[UE_1]", "qosProfile": "QOS_E"},
+        )
+        cam_blocked = post(
+            f"{base}/camara/qod/v0/sessions/context",
+            {"session": "SUPI-302-720-009481726", "qosProfile": "QOS_E"},
+        )
+        return {
+            "checks": [
+                {
+                    "name": "oran_camara_rapp_read_only_and_control_blocked",
+                    "passed": bool(
+                        r1_ok == 200
+                        and r1_blocked == 422
+                        and state["rapp_accepted"] == 1
+                        and state["control_rejected"] == 1
+                    ),
+                },
+                {
+                    "name": "oran_camara_qod_subscriber_identifiers_absent",
+                    "passed": bool(
+                        cam_ok == 200
+                        and cam_blocked == 422
+                        and state["camara_accepted"] == 1
+                        and state["camara_rejected"] == 1
+                    ),
+                },
+            ],
+            "metrics": state,
+        }
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def run_telecom(
     seed: int = 7,
     task_core: str | None = None,
@@ -412,13 +542,15 @@ def run_telecom(
                 },
             ]
         )
+    oran = run_oran_camara_contract()
+    checks.extend(oran["checks"])
     return {
         "suite": "telecom",
-        "engine": "SimPy discrete-event RAN contract model",
+        "engine": "SimPy discrete-event RAN contract model + O-RAN R1 / CAMARA loopback",
         "engine_version": version("simpy"),
         "seed": seed,
         "checks": checks,
-        "metrics": {"normal": normal, "overload": overloaded},
+        "metrics": {"normal": normal, "overload": overloaded, "oran_camara": oran["metrics"]},
         "telemetry": normal["telemetry"] + overloaded["telemetry"],
-        "scope": "Actual SimPy queues/events with an idealized FR1 slot scheduler and local slice authorization. No RF, E2AP, RIC, 5GC registration or live subscriber network is simulated by this tier; use the separate upstream 5GC profile for protocol-stack integration.",
+        "scope": "Actual SimPy queues/events with an idealized FR1 slot scheduler, O-RAN R1 / CAMARA loopback contract and local slice authorization. No RF, E2AP, RIC, 5GC registration or live subscriber network is simulated by this tier; use the separate upstream 5GC profile for protocol-stack integration.",
     }

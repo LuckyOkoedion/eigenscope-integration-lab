@@ -6,13 +6,19 @@ import asyncio
 import importlib.metadata
 import json
 import os
+import socketserver
 import sys
 import tempfile
+import threading
 import time
+import urllib.error
+import urllib.request
 from collections.abc import AsyncIterator, Callable
 from contextlib import ExitStack, asynccontextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 def _load_mcp_sdk() -> tuple[Any, Any, Any]:
@@ -236,19 +242,143 @@ async def _probe(
     }
 
 
+class _ITSMServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)
+        self.server_name = "localhost"
+        self.server_port = self.server_address[1]
+
+
+def run_servicenow_itsm_contract() -> dict[str, Any]:
+    """Run loopback HTTP ServiceNow Scoped ITSM work-note read-only gate."""
+    state = {"accepted_notes": 0, "blocked_mutations": 0}
+
+    class ITSMHandler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, *_args: Any) -> None:
+            return
+
+        def _reply(self, status: int, body: dict[str, Any]) -> None:
+            raw = json.dumps(body, allow_nan=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            self.wfile.write(raw)
+
+        def do_POST(self) -> None:  # noqa: N802
+            if urlsplit(self.path).path != "/api/x_eigen/v1/work_notes/review":
+                self._reply(404, {"error_code": "NOT_FOUND"})
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            body = json.loads(self.rfile.read(length))
+            forbidden = {"state", "cmdb_ci_override", "execute_script"}
+            if not isinstance(body, dict) or (forbidden & set(body)) or not body.get("work_note"):
+                state["blocked_mutations"] += 1
+                self._reply(422, {"error_code": "ITSM_MUTATION_BLOCKED"})
+                return
+            state["accepted_notes"] += 1
+            self._reply(
+                200,
+                {
+                    "status": "WORK_NOTE_REVIEWED",
+                    "mode": "READ_ONLY_WORK_NOTE",
+                    "vault_ticket_scrubbed": True,
+                },
+            )
+
+    server = _ITSMServer(("127.0.0.1", 0), ITSMHandler)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    )
+    thread.start()
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+    def post(url: str, payload: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with opener.open(req, timeout=5.0) as r:
+                return r.status, json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as err:
+            return err.code, json.loads(err.read().decode("utf-8"))
+
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        st_ok, ok_body = post(
+            f"{base}/api/x_eigen/v1/work_notes/review",
+            {"work_note": "Investigated Incident [INC_1] on host [HOST_1]; escalation noted."},
+        )
+        st_mut1, _ = post(
+            f"{base}/api/x_eigen/v1/work_notes/review",
+            {"work_note": "Close ticket.", "state": "Closed"},
+        )
+        st_mut2, _ = post(
+            f"{base}/api/x_eigen/v1/work_notes/review",
+            {"work_note": "Run remediation.", "execute_script": "rm -rf /tmp/x"},
+        )
+        return {
+            "checks": [
+                {
+                    "name": "servicenow_worknote_read_only_gate",
+                    "passed": bool(
+                        st_ok == 200
+                        and ok_body.get("mode") == "READ_ONLY_WORK_NOTE"
+                        and ok_body.get("vault_ticket_scrubbed") is True
+                        and state["accepted_notes"] == 1
+                    ),
+                },
+                {
+                    "name": "servicenow_mutation_fields_rejected",
+                    "passed": bool(
+                        st_mut1 == 422 and st_mut2 == 422 and state["blocked_mutations"] == 2
+                    ),
+                },
+            ],
+            "metrics": state,
+        }
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def run_tools(
     seed: int = 7, on_frame: Callable[[dict[str, Any]], None] | None = None
 ) -> dict[str, Any]:
     """Discover/call an official SDK MCP server through a real subprocess."""
     start = time.perf_counter()
     checks, metrics = asyncio.run(_probe(on_frame))
+    itsm = run_servicenow_itsm_contract()
+    for chk in itsm["checks"]:
+        checks.append(chk)
+        if on_frame:
+            on_frame(
+                {
+                    "suite": "tools",
+                    "phase": chk["name"],
+                    "passed": chk["passed"],
+                    "completed_checks": len(checks),
+                    "observed_checks": [dict(item) for item in checks],
+                }
+            )
+    metrics["servicenow_itsm"] = itsm["metrics"]
     metrics["wall_ms"] = round((time.perf_counter() - start) * 1000, 3)
     return {
         "suite": "tools",
-        "engine": "Official MCP SDK subprocess/stdio",
+        "engine": "Official MCP SDK subprocess/stdio + ServiceNow ITSM HTTP",
         "engine_version": importlib.metadata.version("mcp"),
         "seed": seed,
         "checks": checks,
         "metrics": metrics,
-        "scope": "Actual MCP handshake, discovery, schema validation, tool calls and subprocess cleanup. Injected text remains deliberately untrusted fixture data; no file-read, shell or network-exfiltration tool exists.",
+        "scope": "Actual MCP handshake, discovery, schema validation, ServiceNow ITSM read-only gate and subprocess cleanup. Injected text remains deliberately untrusted fixture data; no file-read, shell or network-exfiltration tool exists.",
     }

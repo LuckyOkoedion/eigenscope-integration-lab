@@ -23,13 +23,14 @@ The engine smoke command runs genuine small GPT-2 and Llama models initialized l
 
 ## Install the official SDK and prepare the protected runtime
 
-SDK **0.2.12** ships both `eigenscope_sdk.connect_model` and the lab adapter
-`eigenscope_sdk.lab_connector:connect`. Install its immutable official wheel:
+SDK **0.2.17** ships both `eigenscope_sdk.connect_model` and the lab adapter
+`eigenscope_sdk.lab_connector:connect`. Install the pinned official release (`eigenscope-sdk==0.2.17`):
 
 ```sh
-uv pip install --python .venv-models/bin/python \
-  'https://github.com/LuckyOkoedion/eigenscope-integration-lab/releases/download/sdk-python-0.2.12-60693e24/eigenscope_sdk-0.2.12-py3-none-any.whl#sha256=60693e24ec67b59409a372a0de8edd90ebf8c452c927a2f4e0dc9e585f5655b7'
+uv pip install --python .venv-models/bin/python 'eigenscope-sdk==0.2.17'
 ```
+
+For production deployment alongside this lab, download [`model-platforms-serving-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/model-platforms-serving-kit.zip) (vLLM, Ray Serve & PyTorch CI) or [`nvidia-isaac-nim-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/nvidia-isaac-nim-kit.zip) for NVIDIA NIM pre-reasoning pipelines.
 
 The deployment operator prepares the authorized Linux model environment once.
 Use the protected operator kit supplied for that deployment, outside this

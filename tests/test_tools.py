@@ -14,8 +14,13 @@ from eigenscope_lab.simulators.tools import read_build_config, run_tools
 def test_real_mcp_process_and_tool_contract():
     pytest.importorskip("mcp")
     result = run_tools()
-    assert len(result["checks"]) == 8
+    assert len(result["checks"]) == 10
     assert all(check["passed"] for check in result["checks"]), result["checks"]
+    names = {c["name"] for c in result["checks"]}
+    assert {
+        "servicenow_worknote_read_only_gate",
+        "servicenow_mutation_fields_rejected",
+    } <= names
 
 
 def test_untrusted_tool_fixture_is_explicit():

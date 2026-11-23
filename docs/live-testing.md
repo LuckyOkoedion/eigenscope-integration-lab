@@ -1,6 +1,6 @@
 # Test an EigenScope integration
 
-Run the published sample cases against an EigenScope service, with local simulators providing the external systems.
+Run the published sample cases against an EigenScope service using SDK **0.2.17**, with local simulators providing the external systems. Visit [EigenScope Integrations](https://eigenscope.guardianai.network/integrations) and the [Package Registry](https://eigenscope.guardianai.network/registry) for all 24 production client kits and packages.
 
 ## Install and configure
 
@@ -22,7 +22,7 @@ Live tests send the fixed synthetic cases in `src/eigenscope_lab/fixtures.py` to
 3. Send the protected core through the OpenAI HTTP client to the local echo provider, which preserves the response text and symbol slots exactly.
 4. Rehydrate through the official SDK/API; check restored identifiers, mapping consumption and replay rejection.
 5. Scrub any remaining mapping created by the invocation, including after a provider failure.
-6. For robotics, telecom, Oil & Gas and healthcare, exercise the scenario adapter with the returned core.
+6. For robotics, telecom, Oil & Gas, healthcare, RAG, legal and finance, exercise the scenario adapter with the returned core.
 
 The SDK uses its public transport hook for bounded HTTP requests, with redirects and environment proxies disabled. Authentication, policy, canonicalization and response validation remain in the official SDK. The runner tracks only its own returned mapping handles in memory, including handles from responses rejected by SDK validation.
 
@@ -40,7 +40,7 @@ uv run --frozen eigenscope-lab live --case workbench --output results/workbench.
 uv run --frozen eigenscope-lab live --repeat 3 --timeout 15 --output results/repeated.json
 ```
 
-Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `healthcare`, `rag`, `email` and `unicode`. Multimodal HTTP endpoints (`/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media`) can be selected explicitly with `--case multimodal`, `multimodal-audio`, `multimodal-image` or `multimodal-video`. Requests run sequentially. Repeat applies to SDK and multimodal cases, is capped at ten and leaves the workbench controls as a single pass.
+Other case IDs are `coding`, `tool-injection`, `telecom`, `oil-gas`, `healthcare`, `rag`, `legal`, `finance`, `email` and `unicode`. Multimodal HTTP endpoints (`/v1/decompose/{audio,image,video}` and `/v1/rehydrate/media`) can be selected explicitly with `--case multimodal`, `multimodal-audio`, `multimodal-image` or `multimodal-video`. Requests run sequentially. Repeat applies to SDK and multimodal cases, is capped at ten and leaves the workbench controls as a single pass.
 
 `--case tools` is an alias for `--case tool-injection`, matching the local `eigenscope-lab run tools` scenario. Both live names run the same SDK workflow and report the canonical `tool-injection` case.
 
@@ -66,7 +66,7 @@ An empty or error response cannot pass the privacy check. Mapping handles stay i
 
 Answer tasks cover decimals, unit conversion, ranges, literal output, structured JSON and conditional logic. The actual workbench answer is compared with the fixed expected result; no echo provider supplies the answer. JSON answers reject duplicate keys, extra keys and wrong value types.
 
-`all` runs 23 suites: nine domain SDK workflows, nine workbench controls, three media workflows, and RAG through both the official SDK and HTTP API. `--case rag` selects the RAG text workflow and both retrieval pipelines, including the SDK's `rag_ingest`, `rag_retrieve` and `rag_evaluate` methods. Challenges run when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. Unit tests and default `serve` make no live calls; `serve --live` uses server-side `ORTHOCORE_API_KEY`.
+`all` runs 25 suites: 11 SDK text workflows (`coding`, `tool-injection`, `telecom`, `robotics`, `oil-gas`, `healthcare`, `rag`, `legal`, `finance`, `email`, `unicode`), nine workbench controls, three media workflows, and RAG through both the official SDK and HTTP API. `--case rag` selects the RAG text workflow and both retrieval pipelines, including the SDK's `rag_ingest`, `rag_retrieve` and `rag_evaluate` methods. Challenges run when explicitly selected. Challenge `--repeat` repeats every selected case and is capped at ten. Reports contain check outcomes and separate HTTP/SDK plus cleanup wall times, without response bodies, credentials or mapping handles. Inspect failed expectations before drawing conclusions about your deployment. Unit tests and default `serve` make no live calls; `serve --live` uses server-side `ORTHOCORE_API_KEY`.
 
 Timings identify SDK, local-provider and complete-workflow boundaries. SDK wall time includes serialization, network requests, service execution and response validation. Reports record the sample count; compare runs using the same client, configuration and environment.
 

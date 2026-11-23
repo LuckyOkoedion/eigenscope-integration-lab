@@ -88,3 +88,21 @@ References: [HL7 MedicationRequest](https://hl7.org/fhir/R4/medicationrequest.ht
 [Dosage](https://hl7.org/fhir/R4/dosage.html),
 [Observation](https://hl7.org/fhir/R4/observation.html), and
 [LOINC 20578-1](https://loinc.org/20578-1/).
+
+## SMART on FHIR App Launch v2 PKCE & `DocumentReference` Contract
+
+`run_fhir_r4_contract()` also exercises a local **SMART App Launch v2** flow on the same loopback FHIR R4 server:
+
+- `GET /fhir/r4/.well-known/smart-configuration` exposes SMART v2 capabilities and `code_challenge_methods_supported: ["S256"]`.
+- `POST /oauth/token` enforces RFC 7636 PKCE `S256` challenge verification and single-use authorization code consumption (rejecting wrong verifiers and replayed codes with `400`).
+- `GET /fhir/r4/DocumentReference/clinical-note-01` requires the resulting Bearer token (`401` when omitted) and validates the returned `DocumentReference` resource offline against the complete bundled HL7 FHIR R4 JSON schema.
+
+## Production distribution clients
+
+Deploy EigenScope inside clinical workflows and hospital VPCs under `HEALTHCARE_CLINICAL_PHI`:
+
+- **Product blueprint:** [EigenScope Healthcare Guide](https://eigenscope.guardianai.network/guide/healthcare)
+- **SMART on FHIR v2 Clinician EHR App (Epic Showroom & Oracle Health CODE):** [`healthcare-smart-on-fhir-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/healthcare-smart-on-fhir-kit.zip)
+- **HIPAA VPC Helm, Terraform PrivateLink/PSC & FHIR R4 / DICOM / Audio Workers:** [`healthcare-vpc-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/healthcare-vpc-kit.zip)
+- **Clinician Browser Shield Extension (Chrome, Edge, Firefox & Safari):** [`browser-extension.zip`](https://eigenscope.guardianai.network/downloads/kits/browser-extension.zip)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)

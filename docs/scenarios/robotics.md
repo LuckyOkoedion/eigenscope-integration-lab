@@ -142,3 +142,19 @@ MuJoCo is consumed as a dependency, with its own upstream license. The MJCF and
 controller code in this repository are original lab fixtures under the
 repository's license. ROS/Nav2 definitions are referenced for interoperability;
 their implementations are not vendored into this scenario.
+
+## Loopback ROS 2 LifecycleNode & NVIDIA Isaac/NIM Guardrail Contract
+
+`run_robotics()` executes a loopback HTTP pre-reasoning guardrail (`run_ros2_nim_guardrail_contract()`) modeling the **ROS 2 LifecycleNode (`SAFE_HOLD`)** and **NVIDIA Isaac ROS / NIM** boundary:
+
+- Verifies `/v1/health` reports `ORTHOCORE_LEASE_ATTESTED` before permitting `ACTIVE` state.
+- Transitions deterministically to `SAFE_HOLD` when `/v1/health` is degraded (`503`) or when `/v1/decompose` rejects scene-OCR safety override text (`422`), ensuring zero outbound motion commands leave the boundary.
+
+## Production distribution clients
+
+Deploy EigenScope on ROS 2 AMR fleets and NVIDIA Physical AI workstations under `ROBOTICS_EMBODIED_VLA`:
+
+- **Product blueprint:** [EigenScope Robotics & Physical AI Guide](https://eigenscope.guardianai.network/guide/robotics)
+- **Official ROS 2 Humble/Jazzy Fleet, SROS2 & Jetson Kit:** [`robotics-ros2-fleet-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/robotics-ros2-fleet-kit.zip)
+- **NVIDIA Partner Network — Isaac ROS / NIM Guardrail & Isaac Sim Extension Kit:** [`nvidia-isaac-nim-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/nvidia-isaac-nim-kit.zip)
+- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)
