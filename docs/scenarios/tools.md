@@ -46,7 +46,7 @@ Sources: [official MCP Python SDK](https://github.com/modelcontextprotocol/pytho
 Protect tool responses, ServiceNow tickets, and enterprise automation pipelines under `UNTRUSTED_TOOL_IPI_FIREWALL`:
 
 - **Product blueprint:** [EigenScope Tool-Result & MCP Firewall Guide](https://eigenscope.guardianai.network/guide/tool-results)
-- **Official `@eigenscope/mcp-server` (0.2.17) & n8n Workflow Kit:** [`tool-mcp-automation-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/tool-mcp-automation-kit.zip) (`npm i @eigenscope/mcp-server@0.2.17`)
+- **Official `@eigenscope/mcp-server` (0.2.18) & n8n Workflow Kit:** [`tool-mcp-automation-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/tool-mcp-automation-kit.zip) (`npm i @eigenscope/mcp-server@0.2.18`)
 - **ServiceNow Scoped ITSM App, JetBrains IDE & MCP Registry `server.json` Kit:** [`jetbrains-servicenow-mcp-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/jetbrains-servicenow-mcp-kit.zip)
 - **Enterprise Java 17 & C# / .NET 8 SDKs:** [`enterprise-sdks-java-dotnet-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/enterprise-sdks-java-dotnet-kit.zip)
 - **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)

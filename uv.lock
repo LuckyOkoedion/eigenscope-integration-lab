@@ -469,7 +469,7 @@ wheels = [
 
 [[package]]
 name = "eigenscope-integration-lab"
-version = "0.3.1"
+version = "0.3.2"
 source = { editable = "." }
 
 [package.optional-dependencies]
@@ -555,7 +555,7 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'oil-gas'", specifier = ">=50,<51" },
     { name = "cryptography", marker = "extra == 'tools'", specifier = ">=50,<51" },
     { name = "eigenscope-integration-lab", extras = ["robotics", "telecom", "provider", "tools", "live", "oil-gas", "healthcare", "multimodal", "rag"], marker = "extra == 'all'" },
-    { name = "eigenscope-sdk", marker = "extra == 'live'", specifier = "==0.2.17" },
+    { name = "eigenscope-sdk", marker = "extra == 'live'", specifier = "==0.2.18" },
     { name = "httpx", marker = "extra == 'healthcare'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'provider'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'rag'", specifier = ">=0.28,<1" },
@@ -587,11 +587,11 @@ dev = [
 
 [[package]]
 name = "eigenscope-sdk"
-version = "0.2.17"
+version = "0.2.18"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/02/2c/7e43d373fe281b343a7ff7341219108f8925e2f5cd5954878e87585f217f/eigenscope_sdk-0.2.17.tar.gz", hash = "sha256:efe20a9686f827bd6b60722a8516474a0752fa6e3aba96e47ce2d291e374349c", size = 65460, upload-time = "2026-11-23T13:20:46.11Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/ab/a5da6525d8717da1b62d24e7cf4e39a3a282deaddab48fc49673d72c8611/eigenscope_sdk-0.2.18.tar.gz", hash = "sha256:89225f012e5b57f6a360769eff985a560fed97340b0e7fb0203e75831fa82c09", size = 66013, upload-time = "2026-11-24T00:54:35.246Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/de/eb3ea391d8b9549b33f1074188adac91b7254fb43d13f71281cfec558245/eigenscope_sdk-0.2.17-py3-none-any.whl", hash = "sha256:60f5d9370cf7fae93eb5b67549b00c426d607a331032ef49fe7df06459f60faa", size = 69877, upload-time = "2026-11-23T13:20:45.26Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/af/f891bc80d47582067b69c3a53d67a81f36b37a2ca2c52a77ee817e045d7d/eigenscope_sdk-0.2.18-py3-none-any.whl", hash = "sha256:388685e7757ffed6b04ff1a8946aca6a1a026b5742a671f03e8b9ae085e90bed", size = 70453, upload-time = "2026-11-24T00:54:34.141Z" },
 ]
 
 [[package]]

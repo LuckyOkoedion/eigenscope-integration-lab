@@ -23,11 +23,11 @@ The engine smoke command runs genuine small GPT-2 and Llama models initialized l
 
 ## Install the official SDK and prepare the protected runtime
 
-SDK **0.2.17** ships both `eigenscope_sdk.connect_model` and the lab adapter
-`eigenscope_sdk.lab_connector:connect`. Install the pinned official release (`eigenscope-sdk==0.2.17`):
+SDK **0.2.18** ships both `eigenscope_sdk.connect_model` and the lab adapter
+`eigenscope_sdk.lab_connector:connect`. Install the pinned official release (`eigenscope-sdk==0.2.18`):
 
 ```sh
-uv pip install --python .venv-models/bin/python 'eigenscope-sdk==0.2.17'
+uv pip install --python .venv-models/bin/python 'eigenscope-sdk==0.2.18'
 ```
 
 For production deployment alongside this lab, download [`model-platforms-serving-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/model-platforms-serving-kit.zip) (vLLM, Ray Serve & PyTorch CI) or [`nvidia-isaac-nim-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/nvidia-isaac-nim-kit.zip) for NVIDIA NIM pre-reasoning pipelines.

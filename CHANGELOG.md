@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 — 2026-11-23
+
+- Upgrade Python, TypeScript, Wasm, CLI, MCP, and IDE SDK pins and documentation to official **0.2.18** releases (`eigenscope-sdk==0.2.18`, `@eigenscope/sdk@0.2.18`, `@eigenscope/orthocore-wasm@0.2.18`, `@eigenscope/mcp-server@0.2.18`, `@eigenscope/init@0.2.18`, `@eigenscope/pi-firewall@0.2.18`) across Python (`uv.lock`) and TypeScript (`package-lock.json`) lockfiles.
+
 ## 0.3.1 — 2026-11-23
 
 - Fix `infra/ignition/stack.py` to forward `capture_output=capture` (instead of `capture=capture`) to `subprocess.run`, and add unit regression test `tests/test_ignition_stack.py::test_execute_forwards_capture_output` (verified end-to-end against live Ignition `8.1.48` Trial + Mosquitto `2.0.20`).

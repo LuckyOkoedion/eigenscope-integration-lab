@@ -32,7 +32,7 @@ Open **http://127.0.0.1:8765**. Select a scenario, choose **Run**, and inspect i
 
 **Local scenarios and the default dashboard need no EigenScope account, API key or hosted credits.** Installation downloads the pinned packages; these scenarios then run locally. Start with `eigenscope-lab serve --live` only when you want browser runs to execute against a configured EigenScope service.
 
-Python 3.12 is selected automatically. Python 3.11–3.13 are the initial CI targets. The default scenarios need no Docker daemon, GPU, radio hardware or physical robot. Git is used for the coding workflow. The lab pins the official **0.2.17** Python, TypeScript and Wasm SDK releases (`eigenscope-sdk==0.2.17`, `@eigenscope/sdk@0.2.17`, `@eigenscope/orthocore-wasm@0.2.17`); [SDK versions and provenance](docs/sdk-snapshots.md) document the checksums and prior snapshot history.
+Python 3.12 is selected automatically. Python 3.11–3.13 are the initial CI targets. The default scenarios need no Docker daemon, GPU, radio hardware or physical robot. Git is used for the coding workflow. The lab pins the official **0.2.18** Python, TypeScript and Wasm SDK releases (`eigenscope-sdk==0.2.18`, `@eigenscope/sdk@0.2.18`, `@eigenscope/orthocore-wasm@0.2.18`); [SDK versions and provenance](docs/sdk-snapshots.md) document the checksums and prior snapshot history.
 
 ![Live telecom queue and throughput observations](docs/verification/dashboard-telecom-light.jpg)
 

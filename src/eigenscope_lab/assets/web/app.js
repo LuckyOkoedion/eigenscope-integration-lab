@@ -266,8 +266,8 @@ const PRODUCTION_CLIENTS = {
       },
       {
         tag: "SDKs · Python & TS/Wasm",
-        name: "EigenScope SDKs (0.2.17) & Registry",
-        detail: "PyPI eigenscope-sdk==0.2.17 and npm @eigenscope/sdk with SHA-256 media helpers.",
+        name: "EigenScope SDKs (0.2.18) & Registry",
+        detail: "PyPI eigenscope-sdk==0.2.18 and npm @eigenscope/sdk with SHA-256 media helpers.",
         href: "https://eigenscope.guardianai.network/registry",
         cta: "Open registry",
       },
@@ -360,7 +360,7 @@ const PRODUCTION_CLIENTS = {
     items: [
       {
         tag: "Production Kit · MCP & n8n",
-        name: "@eigenscope/mcp-server (0.2.17) & n8n Workflow Kit",
+        name: "@eigenscope/mcp-server (0.2.18) & n8n Workflow Kit",
         detail:
           "Official stdio/HTTP MCP runtime plus importable Webhook -> decompose -> model -> rehydrate flow.",
         href: "https://eigenscope.guardianai.network/downloads/kits/tool-mcp-automation-kit.zip",
@@ -390,7 +390,7 @@ const PRODUCTION_CLIENTS = {
       },
       {
         tag: "IDE Plugin · VS Code & Pi",
-        name: "EigenScope for VS Code & @eigenscope/pi-firewall (0.2.17)",
+        name: "EigenScope for VS Code & @eigenscope/pi-firewall (0.2.18)",
         detail:
           "3-stage trace inspector and fail-closed Pi coding firewall published on VS Code & Open VSX.",
         href: "https://eigenscope.guardianai.network/downloads/kits/vscode-pi-extension.zip",

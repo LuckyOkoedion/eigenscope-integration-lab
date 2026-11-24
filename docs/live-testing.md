@@ -1,6 +1,6 @@
 # Test an EigenScope integration
 
-Run the published sample cases against an EigenScope service using SDK **0.2.17**, with local simulators providing the external systems. Visit [EigenScope Integrations](https://eigenscope.guardianai.network/integrations) and the [Package Registry](https://eigenscope.guardianai.network/registry) for all 24 production client kits and packages.
+Run the published sample cases against an EigenScope service using SDK **0.2.18**, with local simulators providing the external systems. Visit [EigenScope Integrations](https://eigenscope.guardianai.network/integrations) and the [Package Registry](https://eigenscope.guardianai.network/registry) for all 24 production client kits and packages.
 
 ## Install and configure
 
