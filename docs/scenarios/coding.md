@@ -39,8 +39,9 @@ Roll out EigenScope across developer IDEs, coding agents, CI pipelines, and poly
 
 - **Product blueprint:** [EigenScope Coding Agent Firewall Guide](https://eigenscope.guardianai.network/guide/coding)
 - **Antigravity IDE Native Firewall Plugin:** [`antigravity-plugin.zip`](https://eigenscope.guardianai.network/downloads/kits/antigravity-plugin.zip)
-- **VS Code & Pi Coding Agent (`@eigenscope/pi-firewall@0.2.18`):** [`vscode-pi-extension.zip`](https://eigenscope.guardianai.network/downloads/kits/vscode-pi-extension.zip) (also on VS Code Marketplace & Open VSX)
-- **Enterprise IDE Fleet & Jamf/Intune MDM Rollout Pack (`@eigenscope/init@0.2.18`):** [`ide-fleet-pack.zip`](https://eigenscope.guardianai.network/downloads/kits/ide-fleet-pack.zip) (Claude Code, Cursor, VS Code, Codex CLI, GitHub Actions, Jamf Pro, Intune)
-- **JetBrains (IntelliJ / PyCharm / GoLand), ServiceNow & MCP Registry Kit:** [`jetbrains-servicenow-mcp-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/jetbrains-servicenow-mcp-kit.zip)
+- **VS Code & Pi Coding Agent (`0.2.18`, `@eigenscope/pi-firewall@0.2.18`, Live RAM CoT Explorer):** [`vscode-pi-extension.zip`](https://eigenscope.guardianai.network/downloads/kits/vscode-pi-extension.zip) (also on VS Code Marketplace & Open VSX)
+- **Meta Muse & Muse Code (`schema_version=1` `~/.config/muse/settings.json`, Hooks, Skill & CoT Explorer):** [`meta-muse-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/meta-muse-kit.zip)
+- **Enterprise IDE Fleet & Jamf/Intune MDM Rollout Pack (`@eigenscope/init@0.2.18`):** [`ide-fleet-pack.zip`](https://eigenscope.guardianai.network/downloads/kits/ide-fleet-pack.zip) (Claude Code, Cursor, VS Code, Codex CLI, Meta Muse Code, GitHub Actions, Jamf Pro, Intune)
+- **JetBrains (`0.2.18`, IntelliJ / PyCharm / GoLand CoT Explorer), ServiceNow & MCP Registry Kit:** [`jetbrains-servicenow-mcp-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/jetbrains-servicenow-mcp-kit.zip)
 - **Enterprise Java 17 (Maven) & C# / .NET 8 (NuGet) SDKs:** [`enterprise-sdks-java-dotnet-kit.zip`](https://eigenscope.guardianai.network/downloads/kits/enterprise-sdks-java-dotnet-kit.zip)
-- **Full Distribution Hub:** [All 24 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)
+- **Full Distribution Hub:** [All 25 EigenScope Integrations & Kits](https://eigenscope.guardianai.network/integrations) · [Package Registry](https://eigenscope.guardianai.network/registry)
